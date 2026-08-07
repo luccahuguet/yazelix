@@ -4,6 +4,9 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.5
 
+- Mars clears direct Kitty placements on a full-screen erase. Returning from an
+  image viewer after a tiled pane expands no longer leaves Yazi's old
+  half-width preview behind; partial erases continue to preserve placements.
 - `yzx enter --session NAME` and `yzx launch --session NAME` create fresh named
   sessions. The matching `attach NAME` forms attach live sessions without
   reapplying the managed layout. Zellij's native session manager selects the

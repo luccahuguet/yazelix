@@ -148,7 +148,7 @@
         STARSHIP_CONFIG=/dev/null ${pkgs.starship}/bin/starship print-config --default > "$out"
       '';
       yzxConfigSrc =
-        assert mars.rev == "129981b3a5b9f0a9ef1fa60d2742845cb1722db3";
+        assert mars.rev == "2b63717135a72ef330d8c2da8ca4cde59c22d739";
           pkgs.runCommand "yzx-config-src" {} ''
         mkdir -p "$out"
         cp -R ${pkgs.lib.cleanSource ./crates/yzx-config}/. "$out/"
