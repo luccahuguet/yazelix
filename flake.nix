@@ -87,7 +87,7 @@
     yaziSchemas,
     zjstatus,
   }: let
-    novaVersion = "1.0.0-beta.4";
+    novaVersion = "1.0.0-beta.5";
     supportedSystems = ["x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin"];
     eachSystem = nixpkgs.lib.genAttrs supportedSystems;
     homeManagerModule = import ./home-manager/module.nix {

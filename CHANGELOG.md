@@ -2,7 +2,7 @@
 
 User-visible runtime changes for Yazelix Nova live here.
 
-## 1.0.0-beta.4
+## 1.0.0-beta.5
 
 - `yzx enter --session NAME` and `yzx launch --session NAME` create fresh named
   sessions. The matching `attach NAME` forms attach live sessions without
@@ -18,7 +18,7 @@ User-visible runtime changes for Yazelix Nova live here.
   Yazelix selects upstream's native `full` frame style while preserving
   `pane_frames false` as the frame-free setting. Stacked work panes retain
   their compact layout instead of using Zellij 0.45's pane-list presentation.
-- The Edge runtime uses the rebuilt Zellij 0.45 fork at `bbccdea6`. Upstream
+- The beta.5 runtime uses the rebuilt Zellij 0.45 fork at `bbccdea6`. Upstream
   owns native Kitty image storage, placement, rendering, and lifecycle. The
   fork translates Yazi's current `U=1` Unicode-placeholder stream into those
   native placements, preventing placeholder glyphs and image fragments from
@@ -34,10 +34,9 @@ User-visible runtime changes for Yazelix Nova live here.
   paths in Yazelix state, repairs an incomplete authoritative grant even after
   older duplicates, and preserves unrelated plugin approvals there. Standalone
   Zellij's global cache and third-party prompt policy remain untouched. The
-  grouped status-bar source and embedded plugin asset are synchronized. Main
-  and Stable remain on accepted revisions until fresh-session dogfood.
-  Moving focus inside a compact stack, opening or closing a pane, and toggling
-  the Yazi sidebar preserve the visible order of surviving work panes.
+  grouped status-bar source and embedded plugin asset are synchronized. Moving
+  focus inside a compact stack, opening or closing a pane, and toggling the Yazi
+  sidebar preserve the visible order of surviving work panes.
 - Reconstructed pane-orchestrator instances initialize canonical workspace
   state for each pre-existing tab when it first becomes active, then recover
   the managed editor's project root. Switching sessions no longer sends agent
@@ -57,9 +56,12 @@ User-visible runtime changes for Yazelix Nova live here.
   bridge that closes during reload is treated as unavailable instead of as a
   malformed response. A stale registry whose TCP endpoint has been reassigned
   is skipped when its old token is rejected. The client bounds response frames,
-  verifies their schema and request identity, and leaves delivery headroom beyond
-  the server's five-second handler budget. Registry session identifiers cannot
-  escape their private state directory during publication or lookup.
+  verifies their schema and request identity, and leaves delivery headroom
+  beyond the server's five-second handler budget. Registry session identifiers
+  cannot escape their private state directory during publication or lookup.
+
+## 1.0.0-beta.4
+
 - The aquarium screen consumes the fixed upstream `asciiquarium-rs` revision
   directly. Closing its popup or terminal exits the child instead of leaving an
   orphaned process spinning on a disconnected PTY; timed welcome and any-key
@@ -364,9 +366,7 @@ User-visible runtime changes for Yazelix Nova live here.
   retarget changes the workspace. Failed editor coordination restores the
   previous root and leaves the sidebar in place. Git and hidden-agent popups
   launch from the canonical root, so focus or Yazi navigation no longer
-  restarts the agent; a real retarget still does. Live session switches recover
-  a stale bootstrap root from the preserved managed editor before those popups
-  open.
+  restarts the agent; a real retarget still does.
 - Ratconfig renders arrays and tables as complete indented details, keeps TOML
   infinities and NaN visible, and replaces duplicate defaults with `same as
   current`. The default field list sizes status and setting from the selected
@@ -646,9 +646,12 @@ User-visible runtime changes for Yazelix Nova live here.
   marker, bundled `tu` Codex quota/reset data, and a yzx-owned cache path; the
   bottom native status bar still owns key hints, and Tab-mode new tabs use the
   packaged sidebar layout/home marker with a home-scoped Yazi cwd.
-- Zellij owns plugin permission prompts and its permission cache. Packaged
-  plugins request approval through the standard status-row prompt; `yzx` does
-  not pre-seed or relocate the cache.
+- The Yazelix Zellij fork focuses plugin permission prompts as they appear,
+  uses a full-viewport prompt for tiny layout panes, and drains concurrent
+  startup permission prompts one at a time before restoring pane focus.
+- `yzx` uses an isolated Zellij plugin-permission cache and pre-seeds packaged
+  Bar, Popup, and pane-orchestrator permissions so desktop launches do not
+  depend on hidden plugin permission prompts.
 - `Alt Shift J/K/L/M` toggle Git, config, agent, and menu popups through
   Yazelix Zellij Popup with Kitty keyboard protocol.
   `keybindings.config`/`agent`/`git`/`menu` can remap those semantic actions

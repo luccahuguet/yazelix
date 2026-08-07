@@ -79,7 +79,7 @@ Linux launchers show their selected channel as `Yazelix Nova (Stable)`,
 `yazelix` package; Main and Edge use the explicit `yazelix-main` and
 `yazelix-edge` outputs so the immutable package owns its launcher label. The
 same package identity remains visible inside sessions as `NOVA β4 STABLE`,
-`NOVA β4 MAIN`, or `NOVA β4 EDGE`.
+`NOVA β5 MAIN`, or `NOVA β5 EDGE`.
 
 Linux is the dogfooded platform. CI builds all packages and a Home Manager
 activation on `aarch64-darwin`. Sustained interactive macOS beta use has found
@@ -432,6 +432,6 @@ If Yazelix is useful to you, you can support its development on
 
 ## LOC Scorecard
 
-Yazelix owns **27,061 lines** of tracked text project files. The
+Yazelix owns **27,064 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
