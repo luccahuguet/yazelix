@@ -4,6 +4,10 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## 1.0.0-beta.5
 
+- The Codex quota widget refreshes official limits once per minute without
+  scanning or updating local session history. Failed or incomplete refreshes
+  retain the last usable value under a `codex~` label and retry after two
+  minutes. Token and combined views retain their history-backed cache policy.
 - Mars clears direct Kitty placements on a full-screen erase. Returning from an
   image viewer after a tiled pane expands no longer leaves Yazi's old
   half-width preview behind; partial erases continue to preserve placements.
