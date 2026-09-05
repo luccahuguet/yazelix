@@ -193,6 +193,11 @@ Yazi, the menu, and Anima use their initials:
   key. Switching preserves the original welcome timer. This is not a session
   lock. Set `keybindings.screen` to remap or unmap it for newly launched sessions.
 
+Run `yzx anima aquarium` for Anima's original pixel-art reef, with schooling fish,
+kelp, coral, bubbles, a ray, and a sand crab. Set `welcome.style = "aquarium"` to
+select it at startup. Classic `yzx anima asciiquarium` remains available while
+the native scene awaits visual acceptance for replacement.
+
 Run `yzx anima plasma` for flowing color fields, `yzx anima chladni` for geometric
 nodal patterns, or `yzx anima physarum` for trail networks. All three work as
 `welcome.style` choices and through native previous/next browsing. Random selection
@@ -527,10 +532,10 @@ runtime-tool sourcing, and bundled KGP package behavior.
 
 ## LOC Scorecard
 
-Yazelix owns **28,125 lines** of tracked text project files. The
+Yazelix owns **28,138 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
-This is 620 lines above the pre-Rio fork surface. The current surface
+This is 633 lines above the pre-Rio fork surface. The current surface
 also records terminal-free packages, the exact Zellij v0.45.0 fork boundary
 and bounded session probes, Yazi 26.8.15 and its one-use picker, Forest and the
 configurable Radar-default sidebar, portable Codex hook onboarding, the
@@ -564,3 +569,5 @@ The card-corner correction stays in Anima; Nova only pins and documents it.
 Random eligibility stays in Anima; Nova consumes its pool without another list.
 Aquarium browsing and child cleanup stay in Anima and its separately packaged
 Aquarium fork; Nova pins them and checks the advertised navigation capability.
+Native Aquarium stays in Anima; Nova adds its welcome choice and consumes the
+same packaged scene in the CLI, welcome, and popup.

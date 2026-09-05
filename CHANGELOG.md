@@ -4,6 +4,10 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- `yzx anima aquarium` plays Anima's original native reef scene, including the
+  shared browsing keys, fading credit card, and welcome timer. The welcome
+  configuration accepts `aquarium`; classic `asciiquarium` remains available.
+
 - Nova Helix ships the nine pinned Codeberg grammar source trees with their
   original contents and licenses. Nix evaluation and grammar builds use these
   verified local snapshots, avoiding Codeberg HTTP 504 failures without disabling

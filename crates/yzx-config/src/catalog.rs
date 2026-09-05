@@ -23,6 +23,7 @@ pub(crate) const WELCOME_STYLE_VALUES: &[&str] = &[
     "static",
     "logo",
     "asciiquarium",
+    "aquarium",
     "boids",
     "boids_predator",
     "boids_schools",
