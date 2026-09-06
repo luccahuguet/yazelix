@@ -4,6 +4,10 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Anima redraws rows without first clearing the screen, preventing blank lower
+  regions during partial terminal updates. On Unix, playback exits when its
+  terminal closes, with or without a hangup signal.
+
 - `yzx anima aquarium` plays Anima's original native reef scene, including the
   shared browsing keys, fading credit card, and welcome timer. The welcome
   configuration accepts `aquarium`; classic `asciiquarium` remains available.
