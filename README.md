@@ -532,10 +532,10 @@ runtime-tool sourcing, and bundled KGP package behavior.
 
 ## LOC Scorecard
 
-Yazelix owns **28,142 lines** of tracked text project files. The
+Yazelix owns **28,145 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
-This is 637 lines above the pre-Rio fork surface. The current surface
+This is 640 lines above the pre-Rio fork surface. The current surface
 also records terminal-free packages, the exact Zellij v0.45.0 fork boundary
 and bounded session probes, Yazi 26.8.15 and its one-use picker, Forest and the
 configurable Radar-default sidebar, portable Codex hook onboarding, the
@@ -570,4 +570,4 @@ Random eligibility stays in Anima; Nova consumes its pool without another list.
 Aquarium browsing and child cleanup stay in Anima and its separately packaged
 Aquarium fork; Nova pins them and checks the advertised navigation capability.
 Native Aquarium stays in Anima; Nova adds its welcome choice and consumes the
-same packaged scene in the CLI, welcome, and popup.
+same scene and minnow head/tail artwork in the CLI, welcome, and popup.

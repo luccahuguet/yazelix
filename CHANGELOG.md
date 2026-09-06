@@ -4,6 +4,9 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Native Aquarium's small schooling fish have visible heads and inset eyes,
+  with forked tails that tuck and fan out as they swim.
+
 - Anima redraws rows without first clearing the screen, preventing blank lower
   regions during partial terminal updates. On Unix, playback exits when its
   terminal closes, with or without a hangup signal.
