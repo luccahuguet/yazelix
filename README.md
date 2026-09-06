@@ -194,14 +194,15 @@ Yazi, the menu, and Anima use their initials:
   lock. Set `keybindings.screen` to remap or unmap it for newly launched sessions.
 
 Run `yzx anima aquarium` for Anima's original pixel-art reef, with schooling fish,
-kelp, coral, bubbles, a ray, and a sand crab. Set `welcome.style = "aquarium"` to
-select it at startup. Classic `yzx anima asciiquarium` remains available while
-the native scene awaits visual acceptance for replacement.
+kelp, coral, bubbles, a ray, and a sand crab. Whale and shark visitors take turns
+crossing larger tanks during longer playback. Set `welcome.style = "aquarium"`
+to select it at startup. `asciiquarium` remains a compatibility alias in commands
+and welcome configs; it displays the native scene, not classic ASCII artwork.
 
 Run `yzx anima plasma` for flowing color fields, `yzx anima chladni` for geometric
 nodal patterns, or `yzx anima physarum` for trail networks. All three work as
 `welcome.style` choices and through native previous/next browsing. Random selection
-includes all current native animations and Aquarium; static and logo remain
+includes all current native animations, including Aquarium; static and logo remain
 explicit-only choices. Native animations display fading name, credit, and navigation
 cards, with black backing confined inside the rounded border. Outside Nova,
 the standalone command is `anima`.
@@ -389,7 +390,7 @@ Yazelix assembles focused forks, plugins, libraries, and commands:
 | [Zellij Popup](https://github.com/Yazelix/zellij-popup) | Zellij plugin that opens, focuses, hides, and closes configured floating TUI panes |
 | [Nova Bar](https://github.com/Yazelix/nova-bar) | Compact Nova top bar with native tabs, modes, session details, and status widgets, built on the theme-aware Yazelix `zjstatus` fork |
 | [Ratconfig](https://github.com/Yazelix/ratconfig) | Reusable Ratatui configuration editor and TOML patching and migration library |
-| [Anima](https://github.com/Yazelix/anima) | Browsable terminal animations including Plasma fields, Chladni patterns, Physarum networks, Matrix rain, particles, and Life tumblers, plus the separately packaged GPL aquarium exposed through `yzx anima` |
+| [Anima](https://github.com/Yazelix/anima) | Browsable terminal animations including the native Aquarium, Plasma fields, Chladni patterns, Physarum networks, Matrix rain, particles, and Life tumblers, exposed through `yzx anima` |
 | [Yazi Bistro](https://github.com/Yazelix/yazi-bistro) | Curated complete Yazi flavors with pinned provenance, licenses, and explicit dark/light classification |
 | [auto-layout.yazi](https://github.com/Yazelix/auto-layout.yazi) | Yazi plugin that changes the column layout to match the available pane width |
 
@@ -532,10 +533,10 @@ runtime-tool sourcing, and bundled KGP package behavior.
 
 ## LOC Scorecard
 
-Yazelix owns **28,145 lines** of tracked text project files. The
+Yazelix owns **28,151 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
-This is 640 lines above the pre-Rio fork surface. The current surface
+This is 646 lines above the pre-Rio fork surface. The current surface
 also records terminal-free packages, the exact Zellij v0.45.0 fork boundary
 and bounded session probes, Yazi 26.8.15 and its one-use picker, Forest and the
 configurable Radar-default sidebar, portable Codex hook onboarding, the
@@ -567,7 +568,6 @@ Anima 0.2.0 uses its named executable; Plasma adds one welcome choice and a pari
 check, while animation rendering and fading cards remain in the child.
 The card-corner correction stays in Anima; Nova only pins and documents it.
 Random eligibility stays in Anima; Nova consumes its pool without another list.
-Aquarium browsing and child cleanup stay in Anima and its separately packaged
-Aquarium fork; Nova pins them and checks the advertised navigation capability.
-Native Aquarium stays in Anima; Nova adds its welcome choice and consumes the
-same scene and minnow head/tail artwork in the CLI, welcome, and popup.
+Aquarium artwork, visitors, browsing, and legacy-name resolution stay in Anima.
+Nova consumes the same native scene in the CLI, welcome, and popup; its config
+still accepts `asciiquarium`. The classic executable is not bundled.

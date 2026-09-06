@@ -1,22 +1,5 @@
 {
   "nodes": {
-    "asciiquarium": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1788644100,
-        "narHash": "sha256-+YTR7rJKiBYo7lFFgXsucrDHs6YuJNlBcS2zTMKH558=",
-        "owner": "Yazelix",
-        "repo": "asciiquarium-rs",
-        "rev": "26e06268d24cd6c31b5d2b88d0eea2ed565f73a1",
-        "type": "github"
-      },
-      "original": {
-        "owner": "Yazelix",
-        "repo": "asciiquarium-rs",
-        "rev": "26e06268d24cd6c31b5d2b88d0eea2ed565f73a1",
-        "type": "github"
-      }
-    },
     "autoLayoutYazi": {
       "flake": false,
       "locked": {
@@ -873,7 +856,6 @@
     },
     "yazelixScreen": {
       "inputs": {
-        "asciiquarium": "asciiquarium",
         "fenix": "fenix_2",
         "kinestra": "kinestra",
         "nixpkgs": [
@@ -882,11 +864,11 @@
         "recording-mars": "recording-mars"
       },
       "locked": {
-        "lastModified": 1788665754,
-        "narHash": "sha256-sG0StjlYScTRQyt5yC+nviNOEWg8bqmK1ZGWAXJz6X8=",
+        "lastModified": 1788730444,
+        "narHash": "sha256-ndCOVbQEf//ixsXBcxoQfcndEOpZWK+SusM/ZGoAWXM=",
         "owner": "Yazelix",
         "repo": "anima",
-        "rev": "3e20b2c98eb1c6b37f2ad8a730a6329f20c947be",
+        "rev": "b3133f057fa0029b3e06c85301161168c48bb799",
         "type": "github"
       },
       "original": {

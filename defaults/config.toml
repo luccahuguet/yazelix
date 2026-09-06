@@ -38,9 +38,10 @@ args = []
 [welcome]
 # Show a brief welcome splash before entering the managed runtime.
 enabled = true
-# Welcome style: static, logo, asciiquarium, boids, boids_predator,
-# boids_schools, friends_and_enemies, primordial, mandelbrot, matrix,
+# Welcome style: static, logo, aquarium, boids, boids_predator, boids_schools,
+# friends_and_enemies, primordial, physarum, chladni, plasma, mandelbrot, matrix,
 # game_of_life_gliders, game_of_life_tumblers, or random.
+# asciiquarium is a compatibility alias for the native aquarium scene.
 style = "random"
 # Welcome splash duration in seconds.
 duration_seconds = 3

@@ -4,6 +4,11 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Aquarium is Anima's sole bundled aquarium. `asciiquarium` remains an alias
+  for the native scene in commands and welcome configs; the classic executable
+  and its duplicate browse/random entry are removed. Original whale and shark
+  visitors take turns crossing larger tanks during longer playback.
+
 - Native Aquarium's small schooling fish have visible heads and inset eyes,
   with forked tails that tuck and fan out as they swim.
 
