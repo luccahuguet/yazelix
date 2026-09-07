@@ -27,6 +27,7 @@ fn main() {
 
     let yzx = Path::new(yzx);
     let git = Path::new(git);
+    expect_read_only_diagnostics(yzx);
     let config = fs::read_to_string(yzx.join("share/yazelix/config.kdl")).unwrap();
     let yzx_shell = default_shell(&config);
     assert!(
@@ -493,7 +494,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         ),
     )
     .unwrap();
-    let status = status_case.run_yzx(&yzx_bin, "status", "yzx status");
+    let status = status_case.prepared_status(&yzx_bin, "yzx status");
     expect_contains_all! {
         &status, "yzx status";
         "Yazelix Nova status",
@@ -639,7 +640,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
     custom_sidebar.write_default_config(
         "\n[sidebar]\ncommand = \"true\"\nargs = [\"two words\", \"--basic\"]\n",
     );
-    let status = custom_sidebar.run_yzx(&yzx_bin, "status", "custom sidebar status");
+    let status = custom_sidebar.prepared_status(&yzx_bin, "custom sidebar status");
     expect_contains_all! {
         &status, "custom sidebar status";
         "sidebar command: true",
@@ -697,7 +698,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
 
     let custom_popup = RuntimeCase::new(&temp.path, "custom-popup");
     custom_popup.write_default_config("\n[popup]\nside_margin = 2\nvertical_margin = 1\n");
-    let status = custom_popup.run_yzx(&yzx_bin, "status", "custom popup status");
+    let status = custom_popup.prepared_status(&yzx_bin, "custom popup status");
     expect_contains_all! {
         &status, "custom popup status";
         "popup side margin: 2",
@@ -712,7 +713,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
 
     let custom_agent = RuntimeCase::new(&temp.path, "custom-agent");
     custom_agent.write_default_config("\n[agent]\ncommand = \"codex\"\nargs = [\"resume\", \"--dangerously-bypass-approvals-and-sandbox\"]\n");
-    let status = custom_agent.run_yzx(&yzx_bin, "status", "custom agent status");
+    let status = custom_agent.prepared_status(&yzx_bin, "custom agent status");
     expect_contains_all! {
         &status, "custom agent status";
         "agent command: codex",
@@ -740,7 +741,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
 
     let custom_popup_spec_case = RuntimeCase::new(&temp.path, "custom-popup-spec");
     custom_popup_spec_case.write_default_config("\n[popup]\nside_margin = 2\nvertical_margin = 1\n\n[popups.btm]\ncommand = \"btm\"\nargs = [\"--basic\"]\ntitle = \"btm_popup\"\nkeybinding = \"Alt Shift B\"\nkeep_alive = true\n");
-    custom_popup_spec_case.run_yzx(&yzx_bin, "status", "custom popup spec status");
+    custom_popup_spec_case.prepared_status(&yzx_bin, "custom popup spec status");
     let custom_popup_spec = custom_popup_spec_case.zellij_file("config.kdl");
     expect_contains(
         &custom_popup_spec,
@@ -765,7 +766,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "plugins {\n    // User plugin comments survive injection.\n    my_plugin location=\"file:/tmp/my_plugin.wasm\" {\n        payload \"{\\\"ok\\\": true}\" // Braces in strings must not change block depth.\n    } // plugin config close\n} // plugins close\n\nload_plugins {\n    my_plugin\n} // load_plugins close\n",
     )
     .unwrap();
-    zellij_plugins.run_yzx(&yzx_bin, "status", "Zellij plugin sidecar status");
+    zellij_plugins.prepared_status(&yzx_bin, "Zellij plugin sidecar status");
     let zellij_plugin_config = zellij_plugins.zellij_file("config.kdl");
     expect_contains_all! {
         &zellij_plugin_config, "Zellij plugin sidecar config";
@@ -776,7 +777,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
 
     let custom_keys = RuntimeCase::new(&temp.path, "custom-keys");
     custom_keys.write_default_config("\n[keybindings]\nconfig = \"Alt Shift C\"\nagent = \"Ctrl Shift A\"\ngit = \"Alt Shift G\"\nmenu = \"Alt Shift U\"\nscreen = \"Alt Shift S\"\nsidebar = \"Ctrl Shift B\"\nsidebar_focus = \"Ctrl Shift E\"\n");
-    let status = custom_keys.run_yzx(&yzx_bin, "status", "custom key status");
+    let status = custom_keys.prepared_status(&yzx_bin, "custom key status");
     expect_contains_all! {
         &status, "custom key status";
         "config keybinding: Alt Shift C",
@@ -815,7 +816,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
 
     let unmapped_keys = RuntimeCase::new(&temp.path, "unmapped-keys");
     unmapped_keys.write_default_config("\n[keybindings]\nconfig = false\nagent = \"Ctrl Shift A\"\nscreen = false\nsidebar = false\n");
-    let status = unmapped_keys.run_yzx(&yzx_bin, "status", "unmapped key status");
+    let status = unmapped_keys.prepared_status(&yzx_bin, "unmapped key status");
     expect_contains_all! {
         &status, "unmapped key status";
         "config keybinding: unmapped",
@@ -851,7 +852,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
 
     let swapped_keys = RuntimeCase::new(&temp.path, "swapped-keys");
     swapped_keys.write_default_config("\n[keybindings]\nconfig = \"Alt Shift H\"\nagent = \"Ctrl y\"\ngit = \"Alt Shift M\"\nmenu = \"Alt Shift J\"\nsidebar = \"Alt Shift K\"\nsidebar_focus = \"Alt Shift L\"\n");
-    swapped_keys.run_yzx(&yzx_bin, "status", "swapped key status");
+    swapped_keys.prepared_status(&yzx_bin, "swapped key status");
     let swapped_key_config = swapped_keys.zellij_file("config.kdl");
     for (key, payload) in [
         ("Alt Shift H", "config"),
@@ -878,7 +879,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
 
     let custom_bar = RuntimeCase::new(&temp.path, "custom-bar");
     custom_bar.write_default_config("\n[bar]\nwidgets = [\"editor\", \"claude_usage\", \"cpu\"]\n");
-    let status = custom_bar.run_yzx(&yzx_bin, "status", "custom bar status");
+    let status = custom_bar.prepared_status(&yzx_bin, "custom bar status");
     expect_contains_all! {
         &status, "custom bar status";
         r#"bar widgets: ["editor","claude_usage","cpu"]"#,
@@ -938,7 +939,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
 
     let light_bar = RuntimeCase::new(&temp.path, "light-bar");
     light_bar.write_default_config("\n[appearance]\nmode = \"light\"\n");
-    let status = light_bar.run_yzx(&yzx_bin, "status", "light appearance status");
+    let status = light_bar.prepared_status(&yzx_bin, "light appearance status");
     expect_contains_all! {
         &status, "light appearance status";
         "layout: runtime (",
@@ -954,7 +955,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
 
     let custom_shell_bar = RuntimeCase::new(&temp.path, "custom-shell-bar");
     custom_shell_bar.write_config("[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"fish\"\n");
-    let status = custom_shell_bar.run_yzx(&yzx_bin, "status", "custom shell bar status");
+    let status = custom_shell_bar.prepared_status(&yzx_bin, "custom shell bar status");
     expect_contains_all! {
         &status, "custom shell bar status";
         "shell: fish",
@@ -979,7 +980,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         &doctor, "yzx doctor";
         "Yazelix Nova doctor",
         "Core",
-        "ok    Configuration    config and state directories ready",
+        "ok    Configuration    settings valid",
         "ok    Commands         shell nu · editor yzx-hx · agent auto",
         "ok    Interface        7 keybindings · bar widgets configured",
         "Runtime",
@@ -1372,6 +1373,11 @@ fn jq_output(jq: &Path, query: &str, json: &str) -> String {
 }
 
 impl RuntimeCase {
+    fn prepared_status(&self, yzx: &Path, context: &str) -> String {
+        successful_output(self.yzx_command(yzx, "run").arg("true"), context);
+        self.run_yzx(yzx, "status", context)
+    }
+
     fn zellij_file(&self, file: &str) -> String {
         fs::read_to_string(self.zellij_path(file)).unwrap()
     }
@@ -1686,7 +1692,7 @@ fn expect_startup_diagnostics(yzx: &Path) {
         &temp.path.join("state-config"),
         &state_file,
         &state_file,
-        "failed to create",
+        "state path is not a directory",
         "unwritable state",
     );
 }
@@ -1919,7 +1925,7 @@ fn expect_rio_config(yzx: &Path) {
     fs::write(&legacy_mars, "# preserved Mars config\n").unwrap();
     fs::write(&legacy_cursors, "# preserved cursor config\n").unwrap();
 
-    let status = case.run_yzx(&yzx_bin, "status", "Rio config initialization");
+    let status = case.prepared_status(&yzx_bin, "Rio config initialization");
     let rio_config = case.config_home.join("rio/config.toml");
     let rio_dark = case.config_home.join("rio/themes/nova-dark.toml");
     let rio_light = case.config_home.join("rio/themes/nova-light.toml");
@@ -1947,7 +1953,7 @@ fn expect_rio_config(yzx: &Path) {
     fs::write(&rio_config, &custom).unwrap();
     fs::write(&rio_dark, "# custom dark theme\n").unwrap();
     fs::write(&rio_light, "# custom light theme\n").unwrap();
-    case.run_yzx(&yzx_bin, "status", "Rio config preservation");
+    case.prepared_status(&yzx_bin, "Rio config preservation");
     assert_eq!(fs::read_to_string(rio_config).unwrap(), custom);
     assert_eq!(
         fs::read_to_string(rio_dark).unwrap(),
@@ -1967,15 +1973,121 @@ fn expect_rio_config(yzx: &Path) {
     );
 }
 
+fn expect_read_only_diagnostics(yzx: &Path) {
+    fn snapshot(root: &Path) -> Vec<(PathBuf, Vec<u8>, std::time::SystemTime)> {
+        let mut entries = Vec::new();
+        if root.is_dir() {
+            for entry in fs::read_dir(root).unwrap() {
+                let path = entry.unwrap().path();
+                let metadata = fs::symlink_metadata(&path).unwrap();
+                let contents = if metadata.is_file() {
+                    fs::read(&path).unwrap()
+                } else if metadata.is_symlink() {
+                    fs::read_link(&path)
+                        .unwrap()
+                        .as_os_str()
+                        .as_encoded_bytes()
+                        .to_vec()
+                } else {
+                    entries.extend(snapshot(&path));
+                    Vec::new()
+                };
+                entries.push((path, contents, metadata.modified().unwrap()));
+            }
+        }
+        entries.sort();
+        entries
+    }
+
+    for state in [
+        "fresh",
+        "configured",
+        "invalid-root",
+        "invalid-sidecar",
+        "invalid-state",
+    ] {
+        let temp = TempDir::new();
+        let case = RuntimeCase::new(&temp.path, state);
+        if state != "fresh" {
+            case.write_default_config("\n[appearance]\nmode = \"light\"\n");
+            fs::create_dir_all(case.zellij_path("config.kdl").parent().unwrap()).unwrap();
+            fs::write(case.zellij_path("config.kdl"), "// previous runtime\n").unwrap();
+            fs::write(case.zellij_path("permissions.kdl"), "\"foreign.wasm\" {}\n").unwrap();
+            fs::create_dir_all(case.config_home.join("zellij")).unwrap();
+            fs::write(
+                case.config_home.join("zellij/config.kdl"),
+                "scroll_buffer_size 1234\n",
+            )
+            .unwrap();
+        }
+        if state == "invalid-root" {
+            case.write_config("[broken");
+        } else if state == "invalid-state" {
+            fs::remove_dir_all(&case.state_dir).unwrap();
+            fs::write(&case.state_dir, "preserve this file").unwrap();
+        } else if state == "invalid-sidecar" {
+            fs::write(case.config_home.join("zellij/config.kdl"), "keybinds {}\n").unwrap();
+        }
+        let before = snapshot(&temp.path);
+        for args in [
+            &["doctor"][..],
+            &["doctor", "--verbose"],
+            &["status"],
+            &["status", "--json"],
+        ] {
+            let output = case
+                .yzx_command(&yzx.join("bin/yzx"), args[0])
+                .args(&args[1..])
+                .env("CODEX_HOME", temp.path.join("codex"))
+                .output()
+                .unwrap();
+            assert_eq!(
+                output.status.success(),
+                !state.starts_with("invalid"),
+                "{state} {args:?}: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            assert!(
+                snapshot(&temp.path) == before,
+                "{state} {args:?} mutated diagnostic inputs"
+            );
+            if state == "fresh" && args[0] == "doctor" {
+                expect_contains(
+                    &String::from_utf8_lossy(&output.stdout),
+                    "runtime files missing; initialized by yzx enter or yzx launch",
+                    "fresh doctor guidance",
+                );
+            }
+        }
+        if !state.starts_with("invalid") {
+            successful_output(
+                case.yzx_command(&yzx.join("bin/yzx"), "run").arg("true"),
+                "runtime preparation after diagnostics",
+            );
+            assert!(case.zellij_path("config.kdl").is_file());
+            assert!(case.zellij_file("permissions.kdl").contains("ReadCliPipes"));
+            if state == "configured" {
+                assert!(
+                    case.zellij_file("config.kdl")
+                        .contains("scroll_buffer_size 1234")
+                );
+                assert!(
+                    case.zellij_file("layout.kdl")
+                        .contains("host_theme_mode \"light\"")
+                );
+            }
+        }
+    }
+}
+
 fn expect_zellij_config_sidecar(yzx: &Path) {
     let packaged_config = yzx.join("share/yazelix/config.kdl");
     let helper = yzx.join("libexec/yazelix/yzx-zellij-config");
     let temp = TempDir::new();
     let sidecar = temp.path.join("config.kdl");
-    let generated_path = temp.path.join("generated.kdl");
 
-    let no_sidecar = run_zellij_config(&helper, &packaged_config, &sidecar, &generated_path);
-    assert_eq!(PathBuf::from(no_sidecar), packaged_config);
+    let no_sidecar = run_zellij_config(&helper, &packaged_config, &sidecar);
+    assert_eq!(no_sidecar, fs::read_to_string(&packaged_config).unwrap());
 
     let packaged_text = fs::read_to_string(&packaged_config).unwrap();
     assert!(packaged_text.contains("theme_dark \"ansi\""));
@@ -1985,15 +2097,11 @@ fn expect_zellij_config_sidecar(yzx: &Path) {
 
     let sidecar_config = "# { preserved comment\ntheme \"dracula\"\nfuture_label \"{opaque}\"\ntheme_dark \"custom-dark\"\nscroll_buffer_size 1234\npane_frames false\n";
     fs::write(&sidecar, sidecar_config).unwrap();
-    let generated = run_zellij_config(&helper, &packaged_config, &sidecar, &generated_path);
-    assert_eq!(PathBuf::from(&generated), generated_path);
+    let generated = run_zellij_config(&helper, &packaged_config, &sidecar);
     let applied_sidecar = "# { preserved comment\nfuture_label \"{opaque}\"\ntheme_dark \"custom-dark\"\nscroll_buffer_size 1234\npane_frames false\n";
     let inherited_pair_removed = packaged_text.replace("theme_dark \"ansi\"\n", "");
     let expected_config = format!("{}\n{}", inherited_pair_removed.trim_end(), applied_sidecar);
-    assert_eq!(
-        fs::read_to_string(&generated_path).unwrap(),
-        expected_config
-    );
+    assert_eq!(generated, expected_config);
     assert_eq!(expected_config.matches("theme_dark ").count(), 1);
     assert_eq!(expected_config.matches("theme_light ").count(), 1);
     assert_eq!(fs::read_to_string(&sidecar).unwrap(), sidecar_config);
@@ -2011,7 +2119,6 @@ fn expect_zellij_config_sidecar(yzx: &Path) {
         let output = Command::new(&helper)
             .arg(&packaged_config)
             .arg(&sidecar)
-            .arg(&generated_path)
             .output()
             .unwrap();
         assert!(
@@ -2143,17 +2250,9 @@ fn expect_yazi_managed_keys(yzx: &Path) {
     }
 }
 
-fn run_zellij_config(
-    helper: &Path,
-    packaged_config: &Path,
-    sidecar: &Path,
-    generated: &Path,
-) -> String {
-    successful_stdout_trimmed(
-        Command::new(helper)
-            .arg(packaged_config)
-            .arg(sidecar)
-            .arg(generated),
+fn run_zellij_config(helper: &Path, packaged_config: &Path, sidecar: &Path) -> String {
+    successful_stdout(
+        Command::new(helper).arg(packaged_config).arg(sidecar),
         &helper.display().to_string(),
     )
 }

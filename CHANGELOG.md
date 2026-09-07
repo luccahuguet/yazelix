@@ -4,6 +4,11 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- `yzx doctor` and `yzx status`, including verbose and JSON output, inspect
+  without creating configuration, generated runtime files or plugin permissions.
+  Missing runtime files are reported; existing launch/run commands initialize
+  them. Invalid configuration fails without modifying diagnostic inputs.
+
 - `yzx radar-setup` and **Set up agent activity in Radar** in `Alt Shift M`
   run Radar's existing interactive setup for Codex, Claude Code and OpenCode.
   Each provider retains its own detection, consent and restart/trust guidance.

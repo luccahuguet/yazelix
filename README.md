@@ -153,6 +153,10 @@ evidence, while `yzx status` owns paths and settings. Inside Yazelix, press
 `Alt Shift M` to open the command palette, including help, tutor and Radar
 agent-activity setup.
 
+Doctor and status inspect without creating or repairing configuration, runtime
+files or plugin permissions. Missing runtime files are initialized by the
+existing launch/run commands; diagnostics report them without preparing a session.
+
 Hold `Ctrl` to underline links and Ctrl-click to open them in Rio on Linux;
 use `Cmd` on macOS. This works inside Zellij as well as in a plain terminal.
 
@@ -554,16 +558,16 @@ runtime-tool sourcing, and bundled KGP package behavior.
 
 ## LOC Scorecard
 
-Yazelix owns **28,568 lines** of tracked text project files. The
+Yazelix owns **28,728 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
-This is 1,063 lines above the pre-Rio fork surface. The current surface
+This is 1,223 lines above the pre-Rio fork surface. The current surface
 also records terminal-free packages, the exact Zellij v0.45.0 fork boundary
 and bounded session probes, Yazi 26.8.15 and its one-use picker, Forest and the
 configurable Radar-default sidebar, portable Codex hook onboarding, the
 public Radar setup command, menu entry, recovery guidance and delegation checks,
 the agent-status reference ledger with exact sources and proof boundaries,
-structured colored doctor,
+read-only colored doctor and its state-preservation regression,
 package-pinned managed commands, `~/` reveal targets, native Nushell clipboard
 commands, portable Yazi PTY checks, the Anima mnemonic, and GitHub's native
 sponsor surface and installed-runtime checks while deleting

@@ -6,14 +6,14 @@ use std::{
 };
 
 use crate::{
-    command::{create_dir_all_checked, run_checked, trim_output},
-    error::{path_error, startup, AppError},
-    paths::parent,
-    runtime::ManagedKeybinding,
     DEFAULT_BAR_WIDGETS_JSON, DEFAULT_POPUP_SIDE_MARGIN, DEFAULT_POPUP_VERTICAL_MARGIN,
     DEFAULT_SHELL_PROGRAM, LAYOUT, LAYOUT_BAR_PLACEHOLDER, LAYOUT_SIDEBAR_PLACEHOLDER,
     LAYOUT_SWAP_TEMPLATE, LAYOUT_TEMPLATE, LAYOUT_YAZI_PLACEHOLDER, YZX_AGENT, YZX_BAR_RENDER,
     YZX_BAR_RENDER_REQUEST, YZX_YAZI, ZELLIJ_HOME_PLACEHOLDER,
+    command::{create_dir_all_checked, run_checked, trim_output},
+    error::{AppError, path_error, startup},
+    paths::parent,
+    runtime::ManagedKeybinding,
 };
 
 pub(crate) fn active_layout(
@@ -23,6 +23,7 @@ pub(crate) fn active_layout(
     shell_label: &str,
     sidebar_pane_kdl: &str,
     radar_enabled: bool,
+    materialize: bool,
 ) -> Result<(&'static str, PathBuf), AppError> {
     if appearance_mode == "dark"
         && bar_widgets == DEFAULT_BAR_WIDGETS_JSON
@@ -34,7 +35,9 @@ pub(crate) fn active_layout(
 
     let layout = state_dir.join("zellij/layout.kdl");
     let plugin_block = render_bar_plugin_block(appearance_mode, bar_widgets, shell_label)?;
-    materialize_layout(&layout, &plugin_block, sidebar_pane_kdl)?;
+    if materialize {
+        materialize_layout(&layout, &plugin_block, sidebar_pane_kdl)?;
+    }
     Ok(("runtime", layout))
 }
 
@@ -42,6 +45,7 @@ pub(crate) fn active_zellij_config(
     state_dir: &Path,
     source: &'static str,
     config: PathBuf,
+    text: String,
     layout: &Path,
     popup_side_margin: &str,
     popup_vertical_margin: &str,
@@ -52,10 +56,9 @@ pub(crate) fn active_zellij_config(
     zellij_plugins_sidecar: &Path,
     home_dir: &Path,
     radar_enabled: bool,
+    materialize: bool,
 ) -> Result<(&'static str, PathBuf), AppError> {
     let runtime_config = state_dir.join("zellij/config.kdl");
-    let text =
-        fs::read_to_string(&config).map_err(|error| path_error("read", &config, &config, error))?;
     let mut patched = text;
     let replaced = patched.replace(ZELLIJ_HOME_PLACEHOLDER, &kdl_string(home_dir.display()));
     if replaced == patched {
@@ -114,9 +117,11 @@ pub(crate) fn active_zellij_config(
         r#"        bind "Alt h" "Alt Left" { MessagePlugin "yazelix_pane_orchestrator" { name "move_focus_left_or_tab"; }; }"#,
         "Zellij config is missing the packaged shared keybind block",
     )?;
-    create_dir_all_checked(parent(&runtime_config), &runtime_config)?;
-    fs::write(&runtime_config, patched)
-        .map_err(|error| path_error("write", &runtime_config, &runtime_config, error))?;
+    if materialize {
+        create_dir_all_checked(parent(&runtime_config), &runtime_config)?;
+        fs::write(&runtime_config, patched)
+            .map_err(|error| path_error("write", &runtime_config, &runtime_config, error))?;
+    }
     Ok((
         if source == "sidecar" {
             "sidecar+runtime"
@@ -604,8 +609,10 @@ mod tests {
                 Err(_) => panic!("managed key patch failed"),
             };
 
-        assert!(patched
-            .contains(r#"bind "Alt Shift C" { MessagePlugin "yzpp" { payload "config"; }; }"#));
+        assert!(
+            patched
+                .contains(r#"bind "Alt Shift C" { MessagePlugin "yzpp" { payload "config"; }; }"#)
+        );
         assert!(patched.contains(r#"unbind "Alt Shift A""#));
         assert!(patched.contains(r#"bind "Ctrl q" { Quit; }"#));
         for omitted in [

@@ -378,8 +378,12 @@ Owned by `runtime/yzx/` (Nix substitutes paths; Rust owns wiring and `exec`).
 Pre-`exec` failures → Yazelix diagnostics.  
 After `exec` → Rio / Zellij / child tool.
 
-`status` and `doctor` reuse this boundary without launching UI. `doctor` warns
-if managed Helix TOML overrides reserved `Alt r`.
+`status` and `doctor` reuse configuration resolution and validation without
+materializing runtime files, initializing Rio or seeding plugin permissions
+(`DIAGNOSTICS-READ-ONLY-001`). The scalar Zellij helper returns merged text;
+runtime preparation owns its final write. Existing launch/run commands retain
+initialization. `doctor` reports missing runtime files and warns if managed
+Helix TOML overrides reserved `Alt r`; `status --json` retains schema version 1.
 
 ---
 

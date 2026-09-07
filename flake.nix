@@ -1255,7 +1255,7 @@
         grep -q 'host_theme_mode "light"' "$YAZELIX_STATE_DIR/zellij/layout.kdl"
         grep -Fq 'host_theme_light_tab_normal "#[fg=#5c5f77] [{index}] {name} "' "$YAZELIX_STATE_DIR/zellij/layout.kdl"
         grep -q 'Yazelix Nova doctor' doctor
-        grep -q 'ok    Configuration    config and state directories ready' doctor
+        grep -q 'ok    Configuration    settings valid' doctor
         grep -q 'ok    Commands         shell fish · editor yzx-hx · agent auto' doctor
         grep -q 'Yazelix Nova tutor lessons' tutor-list
         grep -qx 'Ya' ya-version
@@ -1480,7 +1480,7 @@
           grep -Fqx "package: $variant" "$root/status"
           grep -Fqx 'rio config: not included' "$root/status"
           "$package/bin/yzx" doctor > "$root/doctor"
-          grep -Fq 'ok    Configs          Zellij · layout ready · Rio omitted' "$root/doctor"
+          grep -Fq 'ok    Configs          Zellij · layout validated · Rio omitted' "$root/doctor"
           if "$package/bin/yzx" launch 2> "$root/launch-error"; then
             printf '%s\n' "$variant launch unexpectedly succeeded" >&2
             exit 1

@@ -28,14 +28,14 @@ fn main() {
 
 fn run() -> io::Result<()> {
     let args = env::args_os().map(PathBuf::from).collect::<Vec<_>>();
-    let [_, packaged, sidecar, runtime_config] = args.as_slice() else {
+    let [_, packaged, sidecar] = args.as_slice() else {
         return Err(invalid_input(
-            "usage: yzx-zellij-config <packaged-config> <sidecar> <runtime-config>",
+            "usage: yzx-zellij-config <packaged-config> <sidecar>",
         ));
     };
 
     if !sidecar.is_file() {
-        println!("{}", packaged.display());
+        print!("{}", fs::read_to_string(packaged)?);
         return Ok(());
     }
 
@@ -48,21 +48,16 @@ fn run() -> io::Result<()> {
         .collect::<Vec<_>>();
     let packaged_config = without_top_level_nodes(&fs::read_to_string(packaged)?, &pair_overrides);
 
-    fs::create_dir_all(runtime_config.parent().unwrap())?;
-    fs::write(
-        runtime_config,
-        format!(
-            "{}\n{}{}",
-            packaged_config.trim_end(),
-            applied_sidecar,
-            if applied_sidecar.ends_with('\n') {
-                ""
-            } else {
-                "\n"
-            }
-        ),
-    )?;
-    println!("{}", runtime_config.display());
+    print!(
+        "{}\n{}{}",
+        packaged_config.trim_end(),
+        applied_sidecar,
+        if applied_sidecar.ends_with('\n') {
+            ""
+        } else {
+            "\n"
+        }
+    );
     Ok(())
 }
 

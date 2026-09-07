@@ -246,6 +246,11 @@ report groups useful health checks and colors statuses on a TTY.
 `yzx doctor --verbose` prints Radar's raw report and individual Classic residue
 entries. `yzx status` remains
 the owner of paths and settings. Trust remains owned by Codex's `/hooks` UI.
+Both diagnostic commands validate configuration without writing files, initializing
+Rio or granting plugin permissions, including their verbose/JSON forms.
+Missing runtime files remain absent until an existing launch/run command prepares
+them. Text status marks absent generated paths as `not initialized`; doctor gives
+the launch action. Invalid settings or sidecars fail without changing user state.
 `yzx radar-setup` and its `Alt Shift M` entry invoke the packaged
 `zj-radar setup codex claude opencode` with inherited terminal input/output and
 without `--yes`. Radar owns sequential detection, existing-state handling,

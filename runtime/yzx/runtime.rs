@@ -1,7 +1,6 @@
 use std::{
     env,
     ffi::{OsStr, OsString},
-    fmt::Display,
     fs::{self, OpenOptions},
     io::Write,
     path::{Path, PathBuf},
@@ -10,15 +9,15 @@ use std::{
 };
 
 use crate::{
+    AGENT_POPUP_KDL_CONFIG_PATH, CUSTOM_POPUP_KEYBINDINGS_KDL_CONFIG_PATH,
+    CUSTOM_POPUPS_KDL_CONFIG_PATH, MANAGED_HELIX, MANAGED_KEYBINDING_SPECS, NOVA_BAR_WASM, RIO,
+    YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM, YAZELIX_ZELLIJ_POPUP_WASM, YZX_CONFIG, YZX_CONFIG_KDL,
+    YZX_EDITOR, YZX_HELIX, YZX_ZELLIJ_CONFIG, ZELLIJ, ZJ_RADAR_WASM,
     command::{create_dir_all_checked, run_checked, trim_output},
-    error::{path_error, AppError},
+    error::{AppError, path_error, startup},
     paths::{config_home, home_dir, nonempty_env, parent, runtime_path, state_dir},
     yazi::YaziRuntime,
     zellij::{active_layout, active_zellij_config},
-    AGENT_POPUP_KDL_CONFIG_PATH, CUSTOM_POPUPS_KDL_CONFIG_PATH,
-    CUSTOM_POPUP_KEYBINDINGS_KDL_CONFIG_PATH, MANAGED_HELIX, MANAGED_KEYBINDING_SPECS,
-    NOVA_BAR_WASM, RIO, YAZELIX_ZELLIJ_PANE_ORCHESTRATOR_WASM, YAZELIX_ZELLIJ_POPUP_WASM,
-    YZX_CONFIG, YZX_CONFIG_KDL, YZX_EDITOR, YZX_HELIX, YZX_ZELLIJ_CONFIG, ZELLIJ, ZJ_RADAR_WASM,
 };
 
 pub(crate) struct Runtime {
@@ -164,30 +163,54 @@ fn seed_plugin_permissions(path: &Path, radar_enabled: bool) -> Result<(), AppEr
 }
 
 impl Runtime {
+    pub(crate) fn inspect(with_yazi: bool) -> Result<Self, AppError> {
+        let yazi = with_yazi.then(YaziRuntime::resolve).transpose()?;
+        if let Some(yazi) = &yazi {
+            yazi.warn();
+        }
+        Self::resolve(yazi, false, false)
+    }
+
     pub(crate) fn prepare() -> Result<Self, AppError> {
-        Self::prepare_with(None, false)
+        Self::resolve(None, false, true)
     }
 
     pub(crate) fn prepare_with_yazi() -> Result<Self, AppError> {
         let yazi = YaziRuntime::resolve()?;
         yazi.warn();
-        Self::prepare_with(Some(yazi), false)
+        Self::resolve(Some(yazi), false, true)
     }
 
     pub(crate) fn prepare_new_session_with_yazi() -> Result<Self, AppError> {
         let yazi = YaziRuntime::resolve()?;
         yazi.warn();
-        Self::prepare_with(Some(yazi), true)
+        Self::resolve(Some(yazi), true, true)
     }
 
-    fn prepare_with(yazi: Option<YaziRuntime>, new_session: bool) -> Result<Self, AppError> {
+    fn resolve(
+        yazi: Option<YaziRuntime>,
+        new_session: bool,
+        materialize: bool,
+    ) -> Result<Self, AppError> {
         let state_dir = state_dir();
-        create_dir_all_checked(&state_dir, &state_dir)?;
+        match fs::metadata(&state_dir) {
+            Ok(metadata) if !metadata.is_dir() => {
+                return Err(startup(
+                    "state path is not a directory; move the conflicting file or set YAZELIX_STATE_DIR to a directory",
+                    state_dir.display(),
+                    1,
+                ));
+            }
+            Err(error) if error.kind() != std::io::ErrorKind::NotFound => {
+                return Err(path_error("inspect", &state_dir, &state_dir, error));
+            }
+            _ => {}
+        }
         let home_dir = home_dir()?;
         let config_home = config_home()?;
         let config_toml = config_home.join("config.toml");
         let rio_config = config_home.join("rio/config.toml");
-        if !RIO.is_empty() {
+        if materialize && !RIO.is_empty() {
             run_checked(
                 &rio_config,
                 Command::new(YZX_CONFIG)
@@ -246,25 +269,26 @@ impl Runtime {
             &shell_program,
             &sidebar_pane_kdl,
             radar_enabled,
+            materialize,
         )?;
         let zellij_sidecar = config_home.join("zellij/config.kdl");
         let zellij_plugins_sidecar = config_home.join("zellij/plugins.kdl");
-        let zellij_config = PathBuf::from(trim_output(run_checked(
+        let zellij_text = run_checked(
             &zellij_sidecar,
             Command::new(YZX_ZELLIJ_CONFIG)
                 .arg(YZX_CONFIG_KDL)
-                .arg(&zellij_sidecar)
-                .arg(state_dir.join("zellij/config.kdl")),
-        )?));
-        let zellij_config_source = if zellij_config == PathBuf::from(YZX_CONFIG_KDL) {
-            "packaged"
-        } else {
+                .arg(&zellij_sidecar),
+        )?;
+        let zellij_config_source = if zellij_sidecar.is_file() {
             "sidecar"
+        } else {
+            "packaged"
         };
         let (zellij_config_source, zellij_config) = active_zellij_config(
             &state_dir,
             zellij_config_source,
-            zellij_config,
+            PathBuf::from(YZX_CONFIG_KDL),
+            zellij_text,
             &layout,
             &popup_side_margin,
             &popup_vertical_margin,
@@ -275,10 +299,13 @@ impl Runtime {
             &zellij_plugins_sidecar,
             &home_dir,
             radar_enabled,
+            materialize,
         )?;
         let zellij_status_cache = state_dir.join("zellij/session/status_bar_cache.json");
-        create_dir_all_checked(parent(&zellij_status_cache), &zellij_status_cache)?;
-        seed_plugin_permissions(&state_dir.join(ZELLIJ_PERMISSIONS_FILE), radar_enabled)?;
+        if materialize {
+            create_dir_all_checked(parent(&zellij_status_cache), &zellij_status_cache)?;
+            seed_plugin_permissions(&state_dir.join(ZELLIJ_PERMISSIONS_FILE), radar_enabled)?;
+        }
 
         Ok(Self {
             config_home,
@@ -366,23 +393,28 @@ impl Runtime {
 
     pub(crate) fn rio_config(&self) -> String {
         if !RIO.is_empty() {
-            source_path("user", self.rio_config.display())
+            source_path("user", &self.rio_config)
         } else {
             "not included".to_string()
         }
     }
 
     pub(crate) fn zellij_config(&self) -> String {
-        source_path(self.zellij_config_source, self.zellij_config.display())
+        source_path(self.zellij_config_source, &self.zellij_config)
     }
 
     pub(crate) fn layout(&self) -> String {
-        source_path(self.layout_source, self.layout.display())
+        source_path(self.layout_source, &self.layout)
     }
 }
 
-fn source_path(source: &str, path: impl Display) -> String {
-    format!("{source} ({path})")
+fn source_path(source: &str, path: &Path) -> String {
+    let state = if path.is_file() {
+        ""
+    } else {
+        "; not initialized"
+    };
+    format!("{source} ({}{state})", path.display())
 }
 
 fn config_value(config_home: &Path, config_toml: &Path, key: &str) -> Result<String, AppError> {
