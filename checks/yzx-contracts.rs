@@ -1512,6 +1512,18 @@ fn expect_startup_diagnostics(yzx: &Path) {
             "conflicting agent key",
         ),
         (
+            "bad-new-tab-key-config",
+            "[keybindings]\nconfig = \"Alt Shift t\"\n",
+            "keybindings.config conflicts with packaged key Alt Shift t",
+            "conflicting new-tab key",
+        ),
+        (
+            "bad-close-tab-popup-key-config",
+            "[popups.btm]\ncommand = \"btm\"\nkeybinding = \"Alt Shift W\"\n",
+            "popups.btm.keybinding conflicts with packaged key Alt Shift W",
+            "conflicting close-tab key",
+        ),
+        (
             "bad-key-duplicate-config",
             "[open]\nlog_level = \"info\"\n\n[shell]\nprogram = \"nu\"\n\n[keybindings]\nconfig = \"Alt Shift A\"\nagent = \"Alt Shift A\"\n",
             "keybindings.agent conflicts with keybindings.config: Alt Shift A",
@@ -2111,6 +2123,7 @@ fn expect_keybinds(config: &str) {
     for expected in [
         r#"unbind "Alt i" "Alt o" "Ctrl g""#,
         r#"bind "Alt m" { NewPane; }"#,
+        r#"bind "Alt Shift W" { CloseTab; SwitchToMode "Normal"; }"#,
         r#"bind "Alt h" "Alt Left" { MessagePlugin "yazelix_pane_orchestrator" { name "move_focus_left_or_tab"; }; }"#,
         r#"bind "Alt l" "Alt Right" { MessagePlugin "yazelix_pane_orchestrator" { name "move_focus_right_or_tab"; }; }"#,
         r#"bind "Ctrl Alt n" { MessagePlugin "radar" { name "zj_radar.cmd.v1"; payload "attention-next"; }; }"#,
@@ -2156,15 +2169,18 @@ fn expect_keybinds(config: &str) {
             "config.kdl is missing {expected}",
         );
     }
-    assert!(
-        config.lines().any(|line| {
-            let line = line.trim();
-            line.starts_with(r#"bind "n" { NewTab { layout "/nix/store/"#)
-                && line
-                    .ends_with(r#"/layout.kdl"; cwd "__YZX_HOME__"; }; SwitchToMode "Normal"; }"#)
-        }),
-        "config.kdl must create new tabs from the packaged layout with a runtime home cwd",
-    );
+    for key in ["n", "Alt Shift T"] {
+        assert!(
+            config.lines().any(|line| {
+                let line = line.trim();
+                line.starts_with(&format!(r#"bind "{key}" {{ NewTab {{ layout "/nix/store/"#))
+                    && line.ends_with(
+                        r#"/layout.kdl"; cwd "__YZX_HOME__"; }; SwitchToMode "Normal"; }"#,
+                    )
+            }),
+            "NOVA-DIRECT-TABS-001: {key} must create a managed tab with a runtime home cwd",
+        );
+    }
     expect_no_block_binds_and_unbinds_same_key(config);
     assert!(
         !config.contains(r#"SwitchToMode "Move""#),

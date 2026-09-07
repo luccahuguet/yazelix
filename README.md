@@ -218,6 +218,8 @@ bindings are:
 | --- | --- | --- |
 | Workspace | `Ctrl q` | Quit the Yazelix session |
 | Workspace | `Ctrl Alt t` | Toggle tab mode; `Ctrl t` reaches the focused application |
+| Workspace | `Alt Shift T` | Open a new workspace tab |
+| Workspace | `Alt Shift W` | Close the active workspace tab |
 | Workspace | `Alt m` | Open a new pane |
 | Workspace | `Alt Shift F` | Toggle the focused pane fullscreen |
 | Workspace | `Alt Shift A` | Show a random visual popup |
@@ -229,7 +231,9 @@ bindings are:
 | Yazi | `Alt z` | Retarget the tab workspace with zoxide |
 
 Every new tab starts with the configured sidebar and a focused, one-use tiled
-Yazi picker. A successful choice retargets the tab, creates the managed editor,
+Yazi picker. `Alt Shift T` and `Ctrl Alt t`, then `n`, create tabs at your home
+directory; `x` in tab mode also closes a tab. The direct shortcuts pass through in locked mode.
+A successful choice retargets the tab, creates the managed editor,
 then removes that exact picker. Choosing a folder leaves Forest visible while
 focusing the native Helix picker. `Alt Shift Y` opens the separate persistent
 Yazi popup later.
@@ -533,10 +537,10 @@ runtime-tool sourcing, and bundled KGP package behavior.
 
 ## LOC Scorecard
 
-Yazelix owns **28,151 lines** of tracked text project files. The
+Yazelix owns **28,181 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
-This is 646 lines above the pre-Rio fork surface. The current surface
+This is 676 lines above the pre-Rio fork surface. The current surface
 also records terminal-free packages, the exact Zellij v0.45.0 fork boundary
 and bounded session probes, Yazi 26.8.15 and its one-use picker, Forest and the
 configurable Radar-default sidebar, portable Codex hook onboarding, the
@@ -555,6 +559,8 @@ outside this score. Nova's additions document the 1.2 candidate and its checks.
 The Anima update adds 30 lines to expose its current styles, document navigation,
 and check that every advertised style is accepted by Nova's welcome config.
 The tab-mode chord change adds 15 lines to document and check `Ctrl t` passthrough.
+Direct tab shortcuts reuse native Zellij actions; the added lines document them
+and check managed layouts and shortcut collision rejection.
 The Rio hyperlink repair adds usage and release notes; the child fork removes
 duplicate link matching and click state from its maintained surface.
 The cursor-trail fix adds runtime documentation and release notes; its renderer

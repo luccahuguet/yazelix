@@ -105,6 +105,8 @@ keybinds {
     shared_except "locked" {
         unbind "Alt i" "Alt o" "Ctrl g"
         bind "Alt m" { NewPane; }
+        bind "Alt Shift T" { NewTab { layout "@layout@"; cwd "__YZX_HOME__"; }; SwitchToMode "Normal"; }
+        bind "Alt Shift W" { CloseTab; SwitchToMode "Normal"; }
         bind "Alt Shift Y" {
             MessagePlugin "yazelix_pane_orchestrator" {
                 name "toggle_workspace_popup"

@@ -4,6 +4,10 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- `Alt Shift T` creates a workspace tab and `Alt Shift W` closes the active tab.
+  Both pass through in locked mode. `Ctrl Alt t` retains tab mode and its `n`/`x`
+  actions, while `Ctrl t` remains available to the focused application.
+
 - Aquarium is Anima's sole bundled aquarium. `asciiquarium` remains an alias
   for the native scene in commands and welcome configs; the classic executable
   and its duplicate browse/random entry are removed. Original whale and shark

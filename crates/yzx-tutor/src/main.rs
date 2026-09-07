@@ -348,7 +348,7 @@ fn render_modes_lesson(index: usize, lesson: &TutorLesson) -> String {
 ## Actions
 
 1. **Inside Yazelix:** Press `{pane_mode}` for pane mode. Press it again to return to normal mode.
-2. **Inside Yazelix:** Press `{tab_mode}` for tab mode. Press it again to return to normal mode.
+2. **Inside Yazelix:** Press `Alt Shift T` to create a tab or `Alt Shift W` to close the active tab. `{tab_mode}` opens tab mode, where `n` creates and `x` closes a tab; press the mode key again to return to normal mode.
 3. **Inside Yazelix:** Press `{resize_mode}` for resize mode. Press it again to return to normal mode.
 4. **Inside Yazelix:** Press `{quit}` to quit the session.
 

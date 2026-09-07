@@ -190,6 +190,8 @@ pub(crate) const KEY_BINDINGS: &[[&str; 5]] = &[
     key!("Editor"; "Ctrl y"; "Toggle Forest focus"; "Yazelix"; "helix/config.toml"),
     key!("Editor / Yazi"; "Alt r"; "Reveal in Yazi or return unchanged"; "Yazelix"; "helix/config.toml + yazi/keymap.toml"),
     key!("Tabs"; "Ctrl Alt t"; "Toggle tab mode"; "Zellij"; "config.kdl"),
+    key!("Tabs"; "Alt Shift T"; "Open a new tab"; "Zellij"; "config.kdl"),
+    key!("Tabs"; "Alt Shift W"; "Close the active tab"; "Zellij"; "config.kdl"),
     key!("Tabs"; "Alt 1-9"; "Go directly to tab 1-9"; "Zellij"; "config.kdl"),
     key!("Tabs"; "n in tab mode"; "Open a new tab"; "Zellij"; "config.kdl"),
     key!("Tabs"; "Ctrl Alt h"; "Move tab left"; "Zellij"; "config.kdl"),
