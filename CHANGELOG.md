@@ -4,6 +4,11 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Running Radar jobs and agents show a static yellow `⠿` after 30 minutes of
+  continuous work. Younger runs keep the smooth spinner; services keep `▸`.
+  Pane rows and tab statuses follow their own selected run's age. Returning to
+  Running after another status restarts the spinner.
+
 - `Alt Shift T` creates a workspace tab and `Alt Shift W` closes the active tab.
   Both pass through in locked mode. `Ctrl Alt t` retains tab mode and its `n`/`x`
   actions, while `Ctrl t` remains available to the focused application.
