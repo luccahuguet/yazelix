@@ -558,10 +558,10 @@ runtime-tool sourcing, and bundled KGP package behavior.
 
 ## LOC Scorecard
 
-Yazelix owns **28,728 lines** of tracked text project files. The
+Yazelix owns **28,739 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
-This is 1,223 lines above the pre-Rio fork surface. The current surface
+This is 1,234 lines above the pre-Rio fork surface. The current surface
 also records terminal-free packages, the exact Zellij v0.45.0 fork boundary
 and bounded session probes, Yazi 26.8.15 and its one-use picker, Forest and the
 configurable Radar-default sidebar, portable Codex hook onboarding, the
@@ -570,7 +570,7 @@ the agent-status reference ledger with exact sources and proof boundaries,
 read-only colored doctor and its state-preservation regression,
 package-pinned managed commands, `~/` reveal targets, native Nushell clipboard
 commands, portable Yazi PTY checks, the Anima mnemonic, and GitHub's native
-sponsor surface and installed-runtime checks while deleting
+sponsor surface, release-note footer and installed-runtime checks while deleting
 persistent tiled-Yazi machinery.
 Rio settings add one native-inventory consumer and a contract check; Rio retains
 its defaults and validation, and Nova enables blur in newly seeded configs.

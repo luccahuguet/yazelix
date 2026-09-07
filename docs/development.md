@@ -62,6 +62,17 @@ Skip promotion when no candidate meets the contract. To roll back, commit the
 revert on `edge`, verify it, promote it to `main`, and then promote it through
 the same stable path. Do not move `stable` backward.
 
+### Release notes
+
+End each GitHub release body with this sponsorship footer, once:
+
+```markdown
+If Yazelix saves you time, you can support continued development on [GitHub Sponsors](https://github.com/sponsors/luccahuguet).
+```
+
+For existing releases, save the original body and metadata, append only the footer,
+and verify the published body, tags, titles, flags and assets through the GitHub API.
+
 ## Local development
 
 Use local sibling repositories while hacking runtime inputs:
@@ -128,7 +139,7 @@ git ls-files | grep -Ev '^\.beads/|\.lock$|^assets/' | xargs wc -l
 | --- | ---: |
 | Ignore (`.gitignore`) | 19 |
 | License | 201 |
-| Markdown | 4420 |
+| Markdown | 4431 |
 | JSON | 117 |
 | Nix | 1900 |
 | Shell | 126 |
@@ -139,4 +150,4 @@ git ls-files | grep -Ev '^\.beads/|\.lock$|^assets/' | xargs wc -l
 | Lua | 133 |
 | Rust | 20487 |
 | Text | 84 |
-| Total | 28728 |
+| Total | 28739 |
