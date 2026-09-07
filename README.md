@@ -150,8 +150,8 @@ yzx tutor begin
 `yzx help` lists every command. `yzx doctor` gives a compact, colored health
 summary without opening Rio or Zellij; `yzx doctor --verbose` expands diagnostic
 evidence, while `yzx status` owns paths and settings. Inside Yazelix, press
-`Alt Shift M` to open the command palette, which includes both help and tutor
-entries.
+`Alt Shift M` to open the command palette, including help, tutor and Radar
+agent-activity setup.
 
 Hold `Ctrl` to underline links and Ctrl-click to open them in Rio on Linux;
 use `Cmd` on macOS. This works inside Zellij as well as in a plain terminal.
@@ -250,6 +250,10 @@ prompt, and doctor diagnosis. See [Configuration](docs/configuration.md#sidebar)
 
 Radar owns activity presentation. Top-bar tabs retain native names, bells, and
 layout indicators, with no execution markers or fallback when Radar is hidden.
+Codex activity reporting requires enabled, trusted Radar hooks. These hooks send
+activity events to Radar. Without them, Radar still shows ordinary pane and
+command information, but receives no Codex activity status or prompt labels.
+There is no equivalent hookless fallback in Nova.
 
 With Radar selected, `Alt Shift H` selects the exact named tiled layout
 underneath any visible popup, collapsing the rail to a framed divider or
@@ -262,16 +266,24 @@ Nova Zellij grants the exact
 bundled Radar artifact its four required permissions in Nova's isolated cache,
 so the unfocused startup sidebar cannot trap a consent prompt. On the first
 interactive Codex launch through Nova's agent popup, Nova checks the existing
-Radar hooks. If they are missing, it asks once whether to install them. `y` runs
-the marker-owned Radar setup before Codex starts; `n` is remembered.
+Radar hooks. If they are missing, it asks once whether to install them. Enter or
+`y` runs the marker-owned Radar setup before Codex starts; `n` is remembered and
+starts Codex without enabling activity reporting.
 Non-interactive launches do not prompt, and Nova does not repair hooks that a
 user disables or removes later. Run `yzx doctor` to see the current hook state.
-Claude Code and OpenCode remain explicit setup choices:
+To set up activity reporting, including after declining, run:
 
 ```sh
-zj-radar setup claude -y
-zj-radar setup opencode -y
+yzx radar-setup
 ```
+
+The same action appears in `Alt Shift M` as **Set up agent activity in Radar**.
+Radar checks Codex, Claude Code and OpenCode in order, skips absent agents,
+reports existing integrations and asks before changes (`y` accepts; Enter
+declines). You can enable one agent and decline another. Redirected input skips
+changes. Start a fresh agent session after setup; follow its restart and trust
+guidance. Claude Code uses its native plugin marketplace; OpenCode uses Radar's
+bridge plugin. The automatic first-launch offer remains Codex-only.
 
 Codex setup installs and enables only Radar-owned hooks without changing trust
 hashes. Run `/hooks` in Codex, review the hooks awaiting approval, then press `t`
@@ -310,6 +322,7 @@ Ratconfig's Keys tab is the complete packaged reference, and
 | `yzx yazi-config materialize --user-config-dir <path> --state-dir <path>` | Materialize and print the effective Yazi config directory for automation |
 | `yzx menu` | Open the command palette |
 | `yzx doctor [--verbose]` | Check runtime health; expand diagnostic evidence with `--verbose` |
+| `yzx radar-setup` | Set up Radar activity reporting for Codex, Claude Code and OpenCode |
 | `yzx status` | Print config/runtime paths and selected settings |
 | `yzx status --json` | Print the versioned machine-readable status record |
 | `yzx env` | Open the managed shell without launching the UI |
@@ -539,13 +552,14 @@ runtime-tool sourcing, and bundled KGP package behavior.
 
 ## LOC Scorecard
 
-Yazelix owns **28,189 lines** of tracked text project files. The
+Yazelix owns **28,324 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
-This is 684 lines above the pre-Rio fork surface. The current surface
+This is 819 lines above the pre-Rio fork surface. The current surface
 also records terminal-free packages, the exact Zellij v0.45.0 fork boundary
 and bounded session probes, Yazi 26.8.15 and its one-use picker, Forest and the
 configurable Radar-default sidebar, portable Codex hook onboarding, the
+public Radar setup command, menu entry, recovery guidance and delegation checks,
 structured colored doctor,
 package-pinned managed commands, `~/` reveal targets, native Nushell clipboard
 commands, portable Yazi PTY checks, the Anima mnemonic, and GitHub's native

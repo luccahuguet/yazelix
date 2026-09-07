@@ -235,9 +235,9 @@ fn doctor_radar_codex(agent_command: &str, verbose: bool) {
             doctor_detail(line);
         }
     }
-    if attention.iter().any(|line| !line.contains("run `")) {
-        doctor_detail("action: resolve the warning, then run zj-radar setup codex -y");
-    } else if attention.is_empty() && !output.status.success() {
+    if !attention.is_empty() {
+        doctor_detail("action: resolve the warning, then run yzx radar-setup");
+    } else if !output.status.success() {
         doctor_detail("action: rerun with yzx doctor --verbose for zj-radar output");
     }
     if output.status.success()

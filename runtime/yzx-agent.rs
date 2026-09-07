@@ -119,7 +119,9 @@ fn offer_codex_radar_setup(codex: &OsStr, state_dir: &Path) {
     if !io::stdin().is_terminal() || !io::stderr().is_terminal() {
         return;
     }
-    eprint!("Enable Codex activity in Radar? [Y/n] ");
+    eprint!(
+        "Radar needs Codex hooks to show agent activity.\nYou can enable this later: yzx radar-setup\n\nEnable Codex activity in Radar? [Y/n] "
+    );
     let _ = io::stderr().flush();
     let Some(install) = read_offer_consent(io::stdin().lock()) else {
         return;

@@ -208,6 +208,7 @@ fn main() {
 
 fn expect_front_door(yzx: &Path, jq: &Path) {
     let yzx_bin = yzx.join("bin/yzx");
+    expect_radar_setup(&yzx_bin);
     let help = run_help(&yzx_bin, &["help"]);
     for arg in ["-h", "--help"] {
         assert_eq!(run_help(&yzx_bin, &[arg]), help);
@@ -222,6 +223,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "yzx config",
         "yzx yazi-config materialize --user-config-dir <path> --state-dir <path>",
         "yzx doctor",
+        "yzx radar-setup",
         "yzx env",
         "yzx enter [zellij-args...]",
         "yzx launch [zellij-args...]",
@@ -249,7 +251,14 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
     assert_eq!(
         menu_ids,
         [
-            "config", "doctor", "status", "anima", "launch", "help", "tutor"
+            "config",
+            "doctor",
+            "status",
+            "anima",
+            "launch",
+            "help",
+            "tutor",
+            "radar-setup"
         ],
         "yzx menu command allowlist changed\n{menu}"
     );
@@ -1003,7 +1012,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         &doctor_codex, "yzx doctor missing Radar Codex hooks";
         "warn  Radar            Codex hooks need attention",
         "missing hooks.json: zj-radar Codex hooks are not installed",
-        "action: resolve the warning, then run zj-radar setup codex -y",
+        "action: resolve the warning, then run yzx radar-setup",
     }
     assert!(
         !doctor_codex.contains("Codex trust"),
@@ -1239,6 +1248,78 @@ fn expect_narrow_path_launches(yzx: &Path, yzx_shell: &Path) {
         fs::canonicalize(yzx.join("bin/yzx-yazi")).unwrap(),
         "managed PATH must resolve the public Yazi wrapper"
     );
+}
+
+fn expect_radar_setup(yzx_bin: &Path) {
+    let temp = TempDir::new();
+    let launcher = temp.path.join("yzx");
+    fs::copy(yzx_bin, &launcher).unwrap();
+    let record = temp.path.join("radar-args");
+    let codex_home = temp.path.join("codex home");
+    let config_home = temp.path.join("config home");
+    let state = temp.path.join("state");
+    fs::create_dir_all(state.join("agent")).unwrap();
+    fs::write(state.join("agent/radar-codex-setup-offered"), "1\n").unwrap();
+    write_executable(
+        &temp.path.join("zj-radar"),
+        "#!/bin/sh\nprintf '%s\\n' \"$*\" \"$CODEX_HOME\" \"$XDG_CONFIG_HOME\" >\"$YZX_RADAR_TEST_OUT\"\nprintf 'provider setup output\\n'\nprintf 'provider diagnostic\\n' >&2\nexit \"$YZX_RADAR_TEST_EXIT\"\n",
+    );
+    for command in ["radar-setup", "menu"] {
+        for code in [0, 23] {
+            let mut child = Command::new(&launcher)
+                .arg(command)
+                .env_clear()
+                .env("HOME", &temp.path)
+                .env("CODEX_HOME", &codex_home)
+                .env("XDG_CONFIG_HOME", &config_home)
+                .env("YAZELIX_STATE_DIR", &state)
+                .env("YZX_RADAR_TEST_OUT", &record)
+                .env("YZX_RADAR_TEST_EXIT", code.to_string())
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
+                .unwrap();
+            if command == "menu" {
+                child
+                    .stdin
+                    .as_mut()
+                    .unwrap()
+                    .write_all(b"radar-setup\n")
+                    .unwrap();
+            }
+            drop(child.stdin.take());
+            let output = child.wait_with_output().unwrap();
+            assert_eq!(output.status.code(), Some(code), "{command}: {output:?}");
+            assert_eq!(
+                fs::read_to_string(&record).unwrap(),
+                format!(
+                    "setup codex claude opencode\n{}\n{}\n",
+                    codex_home.display(),
+                    config_home.display()
+                ),
+                "setup must delegate exact targets without blanket consent and preserve config roots"
+            );
+            expect_contains(
+                &String::from_utf8_lossy(&output.stdout),
+                "provider setup output",
+                command,
+            );
+            expect_contains(
+                &String::from_utf8_lossy(&output.stderr),
+                "provider diagnostic",
+                command,
+            );
+        }
+    }
+    fs::remove_file(&record).unwrap();
+    expect_command_error(
+        &launcher,
+        &["radar-setup", "--yes"],
+        "does not accept arguments",
+        "radar setup usage",
+    );
+    assert!(!record.exists(), "invalid arguments must not invoke setup");
 }
 
 fn expect_menu_dispatch(menu: &Path) {

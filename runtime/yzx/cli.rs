@@ -34,6 +34,14 @@ pub(crate) fn run() -> Result<(), AppError> {
             exec_plain(YZX_CONFIG_UI)
         }
         "yazi-config" => exec_yazi_config(args),
+        "radar-setup" => {
+            expect_no_args("radar-setup", &args)?;
+            let mut command = Command::new("zj-radar");
+            command
+                .args(["setup", "codex", "claude", "opencode"])
+                .env("PATH", runtime_path());
+            exec(command, "yzx radar-setup")
+        }
         "menu" => {
             expect_no_args("menu", &args)?;
             exec_menu()
@@ -356,6 +364,7 @@ Usage:
   yzx config
   yzx yazi-config materialize --user-config-dir <path> --state-dir <path>
   yzx doctor [--verbose]
+  yzx radar-setup
   yzx env
   yzx enter [zellij-args...]
   yzx launch [zellij-args...]
@@ -370,6 +379,7 @@ Commands:
   config  Open Yazelix Nova config
   yazi-config  Materialize the effective Yazi configuration
   doctor  Check Yazelix runtime setup
+  radar-setup  Set up agent activity in Radar
   env     Open the managed shell without launching the UI
   enter   Start Yazelix in the current terminal
   launch  Open Rio and start Yazelix
@@ -380,6 +390,11 @@ Commands:
   anima   Show a Yazelix terminal animation
   status  Show Yazelix runtime status
   help    Show this help
+
+Agent activity:
+  yzx radar-setup   Set up Codex, Claude Code and OpenCode interactively
+  Radar asks before changes; unavailable agents are skipped.
+  Start a fresh agent session afterward; review Codex hook trust with /hooks.
 
 Sessions:
   yzx enter --session NAME   Start a fresh named session in this terminal

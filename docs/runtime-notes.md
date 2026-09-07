@@ -200,6 +200,10 @@ Radar owns agent activity. The top bar does not track execution state; its tabs
 use Zellij's native names, selection, bells, and layout indicators. The
 orchestrator's v2 session response retains an empty `extensions.ai_pane_activity`
 list for existing consumers, but no activity tracker or broadcast feeds it.
+Codex activity status and prompt labels reach Radar through enabled, trusted
+Radar hooks. Nova does not query Codex for activity or provide an equivalent
+hookless fallback. Without those hooks, ordinary pane and command information
+remains available, but Codex activity reporting is unavailable.
 
 The packaged agent launcher gives the pane its initial `agent popup` terminal title,
 then replaces itself with `[agent].command`. The default `auto` chooses a
@@ -228,10 +232,12 @@ With Radar selected, the agent launcher runs `zj-radar setup codex --check`
 before the first interactive Codex launch in a Nova state directory. A healthy or intentionally
 disabled installation is remembered without mutation. Missing hooks produce one
 `Enable Codex activity in Radar? [Y/n]` prompt when stdin and stderr are
-terminals. Either answer creates
-`agent/radar-codex-setup-offered`; yes runs marker-owned setup and no leaves the
-provider untouched. Closing the prompt input or entering an unrecognized answer
-leaves no marker. Redirected input or prompt output skips the prompt and marker.
+terminals, preceded by the hook requirement and `yzx radar-setup` recovery path.
+Either answer creates
+`agent/radar-codex-setup-offered`; yes runs marker-owned setup and no starts Codex
+without enabling activity reporting. Closing the prompt input or entering an
+unrecognized answer leaves no marker. Redirected input or prompt output skips
+the prompt and marker.
 Later launches leave removed or disabled hooks alone. Setup failures warn without
 blocking Codex. `yzx doctor` replays Radar's read-only Codex diagnosis and keeps
 missing integration warning-only. It omits the trust reminder until hooks exist
@@ -240,7 +246,17 @@ report groups useful health checks and colors statuses on a TTY.
 `yzx doctor --verbose` prints Radar's raw report and individual Classic residue
 entries. `yzx status` remains
 the owner of paths and settings. Trust remains owned by Codex's `/hooks` UI.
-Claude Code and OpenCode setup stays explicit; Grok and Pi have no Radar adapter.
+`yzx radar-setup` and its `Alt Shift M` entry invoke the packaged
+`zj-radar setup codex claude opencode` with inherited terminal input/output and
+without `--yes`. Radar owns sequential detection, existing-state handling,
+consent and installation. Its prompts default to no (`[y/N]`); noninteractive
+setup skips writes. Codex and OpenCode detection also considers existing config,
+including `CODEX_HOME` and `XDG_CONFIG_HOME`. Setup does not consult Nova's offer
+marker, so a remembered decline never prevents explicit setup. Child output and
+exit status are preserved, and unsupported Nova arguments fail before setup.
+Start a fresh agent session afterward and review Codex trust in `/hooks`.
+The automatic Codex offer never runs setup for other agents. Claude Code and
+OpenCode setup stays explicit; Grok and Pi have no Radar adapter.
 
 Any other `agent.command` value is executed directly by the same launcher for
 new sessions, so custom commands receive the same initial title. Put argv-style

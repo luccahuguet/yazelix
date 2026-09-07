@@ -4,6 +4,12 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- `yzx radar-setup` and **Set up agent activity in Radar** in `Alt Shift M`
+  run Radar's existing interactive setup for Codex, Claude Code and OpenCode.
+  Each provider retains its own detection, consent and restart/trust guidance.
+  Help, doctor and the Codex first-launch offer point to this recovery command;
+  the offer explains that hooks are required for Codex activity reporting.
+
 - Running Radar jobs and agents show a static yellow `⠿` after 30 minutes of
   continuous work. Younger runs keep the smooth spinner; services keep `▸`.
   Pane rows and tab statuses follow their own selected run's age. Returning to
