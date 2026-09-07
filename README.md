@@ -523,8 +523,10 @@ nix run .#yazelix -- enter
 ```
 
 See [Development](docs/development.md) for CI and local checks,
-[Architecture](ARCHITECTURE.md) for ownership boundaries, and
-[Runtime Notes](docs/runtime-notes.md) for launch and integration contracts.
+[Architecture](ARCHITECTURE.md) for ownership boundaries,
+[Runtime Notes](docs/runtime-notes.md) for launch and integration contracts, and
+[Agent-status references](docs/agent-status-references.md) for provider evidence
+and the Radar decision.
 
 ## Meet Yazelisk
 
@@ -552,14 +554,15 @@ runtime-tool sourcing, and bundled KGP package behavior.
 
 ## LOC Scorecard
 
-Yazelix owns **28,324 lines** of tracked text project files. The
+Yazelix owns **28,568 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
-This is 819 lines above the pre-Rio fork surface. The current surface
+This is 1,063 lines above the pre-Rio fork surface. The current surface
 also records terminal-free packages, the exact Zellij v0.45.0 fork boundary
 and bounded session probes, Yazi 26.8.15 and its one-use picker, Forest and the
 configurable Radar-default sidebar, portable Codex hook onboarding, the
 public Radar setup command, menu entry, recovery guidance and delegation checks,
+the agent-status reference ledger with exact sources and proof boundaries,
 structured colored doctor,
 package-pinned managed commands, `~/` reveal targets, native Nushell clipboard
 commands, portable Yazi PTY checks, the Anima mnemonic, and GitHub's native
