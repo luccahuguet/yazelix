@@ -4,6 +4,11 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Home Manager consumers can follow newer nixpkgs without requiring its stock
+  Zellij version to match Nova's build recipe. Nova retains its pinned Zellij
+  fork; CI evaluates representative Linux and Darwin Home Manager configurations
+  with a reviewed nixpkgs revision containing Zellij 0.45.1.
+
 - `yzx doctor` and `yzx status`, including verbose and JSON output, inspect
   without creating configuration, generated runtime files or plugin permissions.
   Missing runtime files are reported; existing launch/run commands initialize

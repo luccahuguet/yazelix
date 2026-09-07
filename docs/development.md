@@ -4,6 +4,10 @@
 
 Normal CI runs Linux checks and the Darwin no-Helix evaluation guard on push,
 pull request, and manual dispatch
+The Home Manager evaluation guard also overrides nixpkgs with a reviewed
+revision containing Zellij 0.45.1 on Linux and Darwin, exercising the consumer
+`follows` path with the existing configuration and package-override cases.
+This guards evaluation; package builds still use the repository lockfile.
 `Publish Nix Cache` publishes all four Linux capability variants, the Main and
 Edge full-package launcher outputs, and representative Home Manager closures
 from `main` and manual dispatch. `Version Gate` is manual and
@@ -139,15 +143,15 @@ git ls-files | grep -Ev '^\.beads/|\.lock$|^assets/' | xargs wc -l
 | --- | ---: |
 | Ignore (`.gitignore`) | 19 |
 | License | 201 |
-| Markdown | 4431 |
+| Markdown | 4447 |
 | JSON | 117 |
-| Nix | 1900 |
+| Nix | 1898 |
 | Shell | 126 |
-| YAML | 448 |
+| YAML | 457 |
 | TOML | 523 |
 | KDL | 256 |
 | Nu | 14 |
 | Lua | 133 |
 | Rust | 20487 |
 | Text | 84 |
-| Total | 28739 |
+| Total | 28762 |

@@ -581,10 +581,8 @@
         then pkgs."zellij-unwrapped"
         else if pkgs.zellij ? unwrapped
         then pkgs.zellij.unwrapped
-        else throw "Yazelix Nova requires the nixpkgs Zellij 0.44.3 unwrapped package contract";
-      yazelixZellijPackage =
-        assert zellijBuildBase.version == "0.44.3";
-        zellijBuildBase.overrideAttrs (_old: {
+        else throw "Yazelix Nova requires an unwrapped nixpkgs Zellij build recipe";
+      yazelixZellijPackage = zellijBuildBase.overrideAttrs (_old: {
         pname = "zellij";
         version = "0.45.0";
         src = yazelixZellij;

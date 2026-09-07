@@ -128,6 +128,11 @@ inputs.yazelix = {
 };
 ```
 
+`follows` uses your nixpkgs revision for Nova's build dependencies; Nova still
+pins its own Zellij fork. Custom nixpkgs revisions may require source builds
+instead of matching Nova's binary cache. Omit `follows` to use Nova's locked
+nixpkgs for Nova; this does not change your host's nixpkgs input.
+
 Import the module from that input:
 
 ```nix
