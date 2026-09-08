@@ -75,7 +75,7 @@ jobs:
           grep -F "config home: $YAZELIX_CONFIG_HOME" "$RUNNER_TEMP/yzx-status.txt"
           grep -F "state dir: $YAZELIX_STATE_DIR" "$RUNNER_TEMP/yzx-status.txt"
           grep -F 'Yazelix Nova doctor' "$RUNNER_TEMP/yzx-doctor.txt"
-          grep -F 'ok    Configuration    config and state directories ready' "$RUNNER_TEMP/yzx-doctor.txt"
+          grep -F 'ok    Configuration    settings valid' "$RUNNER_TEMP/yzx-doctor.txt"
           grep -F 'Yazelix Nova tutor lessons' "$RUNNER_TEMP/yzx-tutor-list.txt"
 
   macos-package-smoke:

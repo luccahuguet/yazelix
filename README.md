@@ -567,7 +567,7 @@ and bounded session probes, Yazi 26.8.15 and its one-use picker, Forest and the
 configurable Radar-default sidebar, portable Codex hook onboarding, the
 public Radar setup command, menu entry, recovery guidance and delegation checks,
 the agent-status reference ledger with exact sources and proof boundaries,
-read-only colored doctor and its state-preservation regression,
+read-only colored doctor, its state-preservation regression and release smoke,
 package-pinned managed commands, `~/` reveal targets, native Nushell clipboard
 commands, portable Yazi PTY checks, the Anima mnemonic, and GitHub's native
 sponsor surface, release-note footer and installed-runtime checks while deleting
