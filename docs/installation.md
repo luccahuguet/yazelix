@@ -122,16 +122,12 @@ does not provide SSH connectivity or remote file synchronization
 Declare the stable input in the consumer flake:
 
 ```nix
-inputs.yazelix = {
-  url = "github:Yazelix/nova/stable";
-  inputs.nixpkgs.follows = "nixpkgs";
-};
+inputs.yazelix.url = "github:Yazelix/nova/stable";
 ```
 
-`follows` uses your nixpkgs revision for Nova's build dependencies; Nova still
-pins its own Zellij fork. Custom nixpkgs revisions may require source builds
-instead of matching Nova's binary cache. Omit `follows` to use Nova's locked
-nixpkgs for Nova; this does not change your host's nixpkgs input.
+This preserves Nova's locked dependencies so its packages can match published
+cache artifacts. Your host and Home Manager keep their own nixpkgs choices.
+Configure the [binary cache](#binary-cache) before the first Nova build.
 
 Import the module from that input:
 
@@ -227,6 +223,69 @@ show as `home-manager` and read-only in `yzx config`. Save, reset, and file-open
 attempts name the exact `programs.yazelix.config.*` option to edit before the
 normal Home Manager switch, while permission-only read-only files remain
 user-owned
+
+### Binary cache
+
+Nova's Home Manager module installs the selected package and configuration;
+the host's Nix configuration owns cache access. Cache reuse requires both a
+matching published store path and a configured, trusted cache.
+
+On NixOS or nix-darwin, add these settings to the system configuration:
+
+```nix
+nix.settings = {
+  extra-substituters = [ "https://yazelix.cachix.org" ];
+  extra-trusted-public-keys = [
+    "yazelix.cachix.org-1:ZgxIjQvaP0VTWL8Racx27mpUNzDJ97xC2y7QWYjmGNM="
+  ];
+};
+```
+
+Apply that system configuration before building Nova through Home Manager.
+For other Nix installations, add the equivalent settings to the Nix
+configuration that controls builds (`/etc/nix/nix.conf` for daemon installs):
+
+```ini
+extra-substituters = https://yazelix.cachix.org
+extra-trusted-public-keys = yazelix.cachix.org-1:ZgxIjQvaP0VTWL8Racx27mpUNzDJ97xC2y7QWYjmGNM=
+```
+
+The `extra-` settings retain existing caches and keys. Restart the Nix daemon
+after editing its configuration. See [Nix's cache configuration guide](https://nix.dev/guides/recipes/add-binary-cache.html)
+for configuration ownership and trust details.
+
+To inspect the planned downloads and builds without compiling, run this from
+your consumer flake, replacing `username` with your Home Manager output name:
+
+```sh
+nix build --dry-run '.#homeConfigurations.username.activationPackage'
+```
+
+If major Nova components would build, check the selected Nova revision and
+dependency overrides, cache settings, and warnings about ignored substituters
+or signatures. A cache miss does not by itself show that the cache was bypassed;
+the requested output may not have been published. See [Cachix troubleshooting](https://docs.cachix.org/faq#why-is-nix-not-picking-up-on-any-of-the-pre-built-artifacts).
+
+### Optional dependency overrides
+
+To deliberately build Nova using a nixpkgs input declared by your consumer
+flake, add a `follows` declaration:
+
+```nix
+inputs.yazelix.inputs.nixpkgs.follows = "nixpkgs-unstable";
+```
+
+Use your actual input name, such as `nixpkgs` or `nixpkgs-unstable`; a local
+variable such as `pkgs-unstable = import nixpkgs-unstable { ... };` is not an
+input name. Renaming an input alone does not change its packages. Two inputs
+with the same branch URL can have different locked commits; `follows` selects
+the referenced input's locked revision. See [Nix's input reference](https://nix.dev/manual/nix/2.35/command-ref/new-cli/nix3-flake.html#flake-inputs).
+
+Nova still pins its own Zellij fork, but changing nixpkgs can change build
+dependencies and require source builds. Overriding child inputs such as
+`fenix` or `rust-overlay` can also change toolchains and cached output paths,
+even when nixpkgs stays fixed. Leave Nova's internal inputs at their locked
+revisions unless you intend to change those dependencies.
 
 ## Updates
 

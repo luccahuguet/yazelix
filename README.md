@@ -107,7 +107,9 @@ yzx launch
 ### Install with Home Manager
 
 Use the [Home Manager module](docs/installation.md#home-manager) for a
-declarative install.
+declarative install. The default example preserves Nova's locked dependencies;
+configure the [binary cache](docs/installation.md#binary-cache) to reuse
+published builds. Dependency overrides may require source builds.
 
 ### Moving from Yazelix Classic
 
@@ -558,10 +560,10 @@ runtime-tool sourcing, and bundled KGP package behavior.
 
 ## LOC Scorecard
 
-Yazelix owns **28,804 lines** of tracked text project files. The
+Yazelix owns **28,866 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
-This is 1,299 lines above the pre-Rio fork surface. The current surface
+This is 1,361 lines above the pre-Rio fork surface. The current surface
 also records terminal-free packages, the exact Zellij v0.45.0 fork boundary
 and bounded session probes, Yazi 26.8.15 and its one-use picker, Forest and the
 configurable Radar-default sidebar, portable Codex hook onboarding, the
@@ -580,6 +582,7 @@ Codeberg outages out of evaluation and builds; third-party sources stay in Helix
 The nixpkgs compatibility guard shares one reviewed pin between ordinary
 evaluation and native Linux/Darwin release builds of existing Home Manager checks.
 The added lines provide bounded build coverage without another package owner.
+Home Manager installation guidance explains cache setup and dependency overrides.
 Radar owns the 30-minute transition from a smooth spinner to static yellow `⠿`;
 Nova's added lines document the behavior and pin its child artifact.
 The activity cleanup lives in the child repositories; their deletions are
