@@ -4,6 +4,9 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Radar's Nix packages use explicit names, removing Crane's placeholder-name
+  warnings during evaluation and builds.
+
 - Agent popup toggles recognize running agents after a runtime update, preserving
   their titles and processes instead of opening duplicate panes.
 
