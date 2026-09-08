@@ -12,28 +12,46 @@ Ordinary CI evaluates this override; heavy compatibility builds run in Version G
 Edge Linux full-package launcher outputs, and representative Home Manager closures
 from `main` and manual dispatch. Both jobs push the requested output closures
 synchronously, including substituted outputs. Missing credentials or failed
-uploads fail the job. `Version Gate` is manual and
-includes all four Linux profile shapes, all four `aarch64-darwin` packages,
-the Darwin Home Manager closure, and the Darwin Rio, no-Helix, and host-Yazi
-contracts. Its two native jobs also build the complete Home Manager check with
-the same reviewed nixpkgs override, including customized configuration and
-installed-command checks. Both builds must pass before release acceptance;
-evaluation alone does not satisfy this gate. Other builds retain `flake.lock`.
-Version Gate allows one active run and one pending run, with two native jobs
-limited to 90 minutes each and a five-minute `release-gate` aggregate. The
-aggregate runs even after a dependency fails and succeeds only when both native
-jobs succeed; failure, cancellation, and skipping cannot satisfy it.
-Compatibility builds reuse the existing Nix limits: two
-build jobs on Linux and one on Darwin, with two cores per build. They record
-elapsed time, runner disk availability, and the check output path.
-There are no compatibility-build push/PR triggers, cache uploads or secrets;
-manual runs in forks use the same read-only workflow. Review the comparison pin
-deliberately and verify both native builds when changing it. This proves the
-reviewed pin, not every future nixpkgs revision. Retain compatibility failures
-and measured runner limits before changing the pin or expanding the CI budget.
+uploads fail the job. `Version Gate` is manual. Its Linux job installs all four
+profile shapes, runs release contracts, and builds the complete Home Manager
+check with the reviewed nixpkgs override. `macos-package-smoke` retains the
+locked-input Darwin packages, Home Manager, Rio, no-Helix, and host-Yazi checks.
+Three dependent Darwin jobs exercise the same reviewed override:
+
+1. `darwin-core` builds `yazelix-no-rio-no-helix-no-yazi` and publishes its closure.
+2. `darwin-editor` restores the core closure, builds `yazelix-no-rio`, and publishes it.
+3. `darwin-integration` restores both closures and builds the complete
+   `checks.aarch64-darwin.home_manager`, including Rio and all configuration and
+   installed-command assertions. It does not publish another closure.
+
+Each stage checks out the same candidate SHA and reads `checks/newer-nixpkgs.txt`.
+Prerequisite paths come from successful job outputs. `nix copy --from` restores
+those exact closures from Cachix without a build fallback; missing paths or a
+failed copy, build, or publication fail the stage. Rerun a failed job after
+addressing its failure; completed prerequisites remain in the shared cache.
+
+Cache writes use the existing `CACHIX_AUTH_TOKEN` only in the two prerequisite
+jobs. Stages reject dispatches outside the canonical repository's `edge`, `main`,
+and `stable` branches before checkout or credential use. Missing publication
+credentials fail explicitly; fork and tag dispatches cannot pass this gate.
+There are no compatibility push/PR triggers, store archives, retention pins,
+or additional cache services. Only the two requested runtime closures are
+published; common store paths are deduplicated under the existing cache policy.
+Logs include exact paths, closure sizes, elapsed build time and runner disk use.
+Closure size is an upper bound on added cache storage, not measured cache growth.
+
+Version Gate permits one active and one pending run. Five native jobs have
+90-minute limits and `release-gate` has five minutes, bounding configured runner
+time at 455 minutes per invocation. Linux keeps two Nix build jobs, Darwin one,
+with two cores each. Stage limits retain the existing cap until native timings
+support tighter bounds. The aggregate requires all five jobs to succeed, even
+after a dependency fails; failed, cancelled, or skipped work cannot satisfy it.
+Review the comparison pin deliberately and verify all native stages when
+changing it. This proves the reviewed pin, not every future nixpkgs revision.
+Retain compatibility failures and measured limits before expanding the CI budget.
 `Darwin Package Smoke` runs the same Darwin verification weekly on Monday when
 `main` has commits in the last 7 days, and on manual dispatch always, while
-idle weeks skip the macOS build. Both macOS jobs assert that Darwin packages
+idle weeks skip the macOS build. Both package-smoke jobs assert that Darwin packages
 contain no Linux desktop entry. The flake advertises the optional Yazelix
 Cachix cache, while source builds remain valid without it. Use Version Gate
 before publishing a release
@@ -187,15 +205,15 @@ git ls-files | grep -Ev '^\.beads/|\.lock$|^assets/' | xargs wc -l
 | --- | ---: |
 | Ignore (`.gitignore`) | 19 |
 | License | 201 |
-| Markdown | 4595 |
+| Markdown | 4613 |
 | JSON | 117 |
 | Nix | 1898 |
 | Shell | 126 |
-| YAML | 473 |
+| YAML | 568 |
 | TOML | 523 |
 | KDL | 257 |
 | Nu | 14 |
 | Lua | 133 |
 | Rust | 20485 |
 | Text | 85 |
-| Total | 28926 |
+| Total | 29039 |

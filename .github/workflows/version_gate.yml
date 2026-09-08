@@ -12,18 +12,15 @@ concurrency:
 
 jobs:
   release-gate:
-    needs: [linux-profile-smoke, macos-package-smoke]
+    needs: [linux-profile-smoke, macos-package-smoke, darwin-core, darwin-editor, darwin-integration]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Require both native release checks
+      - name: Require every release check
         env:
-          LINUX_RESULT: ${{ needs.linux-profile-smoke.result }}
-          DARWIN_RESULT: ${{ needs.macos-package-smoke.result }}
-        run: |
-          test "$LINUX_RESULT" = success
-          test "$DARWIN_RESULT" = success
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: jq --exit-status 'length > 0 and all(.[]; .result == "success")' <<< "$NEEDS_JSON"
 
   linux-profile-smoke:
     runs-on: ubuntu-latest
@@ -137,9 +134,107 @@ jobs:
             .#checks.aarch64-darwin.rio_contracts \
             .#checks.aarch64-darwin.no_helix_contracts
 
-      - name: Build Home Manager with newer nixpkgs
+  darwin-core:
+    runs-on: macos-15
+    timeout-minutes: 90
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+      STAGE_TARGET: packages.aarch64-darwin.yazelix-no-rio-no-helix-no-yazi
+      CACHE_OUTPUT: "true"
+    outputs: &stage-outputs
+      path: ${{ steps.build.outputs.path }}
+    steps: &darwin-stage-steps
+      - name: Require a trusted manual release-channel run
+        env:
+          TRUSTED_RUN: ${{ github.event_name == 'workflow_dispatch' && github.repository_id == '746026727' && contains(fromJSON('["refs/heads/edge","refs/heads/main","refs/heads/stable"]'), github.ref) }}
+        shell: bash
         run: |
+          if [ "$TRUSTED_RUN" != true ]; then
+            echo "::error::Darwin compatibility stages require a manual run on a canonical release channel."
+            exit 1
+          fi
+
+      - name: Require cache publication credentials
+        if: env.CACHE_OUTPUT == 'true'
+        env:
+          CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
+        shell: bash
+        run: |
+          if [ -z "$CACHIX_AUTH_TOKEN" ]; then
+            echo "::error::CACHIX_AUTH_TOKEN is required for the Darwin stage handoff."
+            exit 1
+          fi
+
+      - name: Check out exact candidate
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v22
+        with:
+          determinate: false
+          extra-conf: |
+            accept-flake-config = true
+            max-jobs = 1
+            cores = 2
+
+      - name: Configure Cachix client
+        uses: cachix/cachix-action@v17
+        with:
+          name: yazelix
+          authToken: ${{ env.CACHE_OUTPUT == 'true' && secrets.CACHIX_AUTH_TOKEN || '' }}
+          skipPush: true
+
+      - name: Restore exact prerequisite closures without building
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        shell: bash
+        run: |
+          jq --raw-output '.[] | .outputs.path | if type == "string" and length > 0 then . else error("Missing prerequisite output") end' <<< "$NEEDS_JSON" |
+            while IFS= read -r path; do
+              nix copy --from https://yazelix.cachix.org "$path"
+              nix path-info --json --closure-size "$path"
+            done
+
+      - name: Build compatibility stage
+        id: build
+        shell: bash
+        run: |
+          pin="$(cat checks/newer-nixpkgs.txt)"
+          printf 'Candidate: %s\nNixpkgs: %s\nTarget: %s\n' "$GITHUB_SHA" "$pin" "$STAGE_TARGET"
           df -h /
-          time nix build --no-link --no-write-lock-file --print-out-paths --print-build-logs \
-            --override-input nixpkgs "$(cat checks/newer-nixpkgs.txt)" \
-            .#checks.aarch64-darwin.home_manager
+          output="$(time nix build --no-link --no-write-lock-file --print-out-paths --print-build-logs \
+            --override-input nixpkgs "$pin" ".#$STAGE_TARGET")"
+          test -e "$output"
+          nix path-info --json --closure-size "$output"
+          echo "path=$output" >> "$GITHUB_OUTPUT"
+
+      - name: Publish prerequisite closure
+        if: env.CACHE_OUTPUT == 'true'
+        env:
+          CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          STAGE_OUTPUT: ${{ steps.build.outputs.path }}
+        shell: bash
+        run: cachix push yazelix "$STAGE_OUTPUT"
+
+  darwin-editor:
+    needs: darwin-core
+    runs-on: macos-15
+    timeout-minutes: 90
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+      STAGE_TARGET: packages.aarch64-darwin.yazelix-no-rio
+      CACHE_OUTPUT: "true"
+    outputs: *stage-outputs
+    steps: *darwin-stage-steps
+
+  darwin-integration:
+    needs: [darwin-core, darwin-editor]
+    runs-on: macos-15
+    timeout-minutes: 90
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+      STAGE_TARGET: checks.aarch64-darwin.home_manager
+      CACHE_OUTPUT: "false"
+    steps: *darwin-stage-steps
