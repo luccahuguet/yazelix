@@ -26,17 +26,13 @@ jobs:
 
     steps:
       - name: Check Cachix token
-        id: cachix-token
         run: |
-          if [ -n "$CACHIX_AUTH_TOKEN" ]; then
-            echo "available=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "::warning::CACHIX_AUTH_TOKEN is not configured; skipping cache publish."
-            echo "available=false" >> "$GITHUB_OUTPUT"
+          if [ -z "$CACHIX_AUTH_TOKEN" ]; then
+            echo "::error::CACHIX_AUTH_TOKEN is required to publish the cache."
+            exit 1
           fi
 
       - name: Free runner disk space
-        if: steps.cachix-token.outputs.available == 'true'
         run: |
           sudo rm -rf \
             /opt/hostedtoolcache \
@@ -47,13 +43,11 @@ jobs:
           docker system prune --all --force --volumes || true
 
       - name: Check out repository
-        if: steps.cachix-token.outputs.available == 'true'
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Install Nix
-        if: steps.cachix-token.outputs.available == 'true'
         uses: DeterminateSystems/nix-installer-action@v22
         with:
           determinate: false
@@ -62,14 +56,12 @@ jobs:
             cores = 2
 
       - name: Configure Cachix
-        if: steps.cachix-token.outputs.available == 'true'
         uses: cachix/cachix-action@v17
         with:
           name: yazelix
           authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
 
       - name: Build and publish package and Home Manager closures
-        if: steps.cachix-token.outputs.available == 'true'
         run: |
           nix build --no-link --print-out-paths \
             .#packages.x86_64-linux.yazelix \
@@ -97,23 +89,18 @@ jobs:
 
     steps:
       - name: Check Cachix token
-        id: cachix-token
         run: |
-          if [ -n "$CACHIX_AUTH_TOKEN" ]; then
-            echo "available=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "::warning::CACHIX_AUTH_TOKEN is not configured; skipping cache publish."
-            echo "available=false" >> "$GITHUB_OUTPUT"
+          if [ -z "$CACHIX_AUTH_TOKEN" ]; then
+            echo "::error::CACHIX_AUTH_TOKEN is required to publish the cache."
+            exit 1
           fi
 
       - name: Check out repository
-        if: steps.cachix-token.outputs.available == 'true'
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Install Nix
-        if: steps.cachix-token.outputs.available == 'true'
         uses: DeterminateSystems/nix-installer-action@v22
         with:
           determinate: false
@@ -123,7 +110,6 @@ jobs:
             cores = 2
 
       - name: Configure Cachix client
-        if: steps.cachix-token.outputs.available == 'true'
         uses: cachix/cachix-action@v17
         with:
           name: yazelix
@@ -132,7 +118,6 @@ jobs:
           skipPush: true
 
       - name: Build, publish, and verify Darwin closures
-        if: steps.cachix-token.outputs.available == 'true'
         run: |
           outputs="$RUNNER_TEMP/aarch64-darwin-cache-paths"
           nix build --no-link --no-write-lock-file --print-out-paths --print-build-logs \

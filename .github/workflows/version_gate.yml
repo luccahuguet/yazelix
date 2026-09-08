@@ -11,6 +11,20 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  release-gate:
+    needs: [linux-profile-smoke, macos-package-smoke]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require both native release checks
+        env:
+          LINUX_RESULT: ${{ needs.linux-profile-smoke.result }}
+          DARWIN_RESULT: ${{ needs.macos-package-smoke.result }}
+        run: |
+          test "$LINUX_RESULT" = success
+          test "$DARWIN_RESULT" = success
+
   linux-profile-smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 90

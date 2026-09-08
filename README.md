@@ -67,10 +67,12 @@ Yazelix requires Nix with flakes enabled. `launch` opens the packaged Rio window
 in a graphical session, while `enter` starts the same workspace in the current
 terminal or over SSH.
 
-The `stable` branch advances from a checked
-and dogfooded `main` revision at most once per week. Use `main` for more constant updates or an
-immutable `nova-v*` tag for an exact release. `edge` is the opt-in experimental
-dogfood channel.
+The `stable` branch advances from a verified and dogfooded `main` revision,
+normally at least seven days apart. Urgent fixes may arrive sooner with the same
+verification. Channels share one linear history: `stable ⊆ main ⊆ edge`;
+promotions include every intervening commit. Use `main` for frequent updates or
+an immutable `nova-v*` tag for an exact release. `edge` is the opt-in experimental
+dogfood channel. See the [promotion policy](docs/development.md#edge-main-and-stable).
 
 Linux launchers show their selected channel as `Yazelix Nova (Stable)`,
 `Yazelix Nova (Main)`, or `Yazelix Nova (Edge)`. Stable uses the default
@@ -560,10 +562,10 @@ runtime-tool sourcing, and bundled KGP package behavior.
 
 ## LOC Scorecard
 
-Yazelix owns **28,866 lines** of tracked text project files. The
+Yazelix owns **28,922 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
-This is 1,361 lines above the pre-Rio fork surface. The current surface
+This is 1,417 lines above the pre-Rio fork surface. The current surface
 also records terminal-free packages, the exact Zellij v0.45.0 fork boundary
 and bounded session probes, Yazi 26.8.15 and its one-use picker, Forest and the
 configurable Radar-default sidebar, portable Codex hook onboarding, the
@@ -575,6 +577,7 @@ package-pinned managed commands, `~/` reveal targets, native Nushell clipboard
 commands, portable Yazi PTY checks, the Anima mnemonic, and GitHub's native
 sponsor surface, release-note footer and installed-runtime checks while deleting
 persistent tiled-Yazi machinery.
+Release policy records whole-revision promotions and requires both native gates.
 Rio settings add one native-inventory consumer and a contract check; Rio retains
 its defaults and validation, and Nova enables blur in newly seeded configs.
 The Helix grammar source check consumes Nova Helix's verified snapshots to keep

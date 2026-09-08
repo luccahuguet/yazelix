@@ -481,6 +481,11 @@ stable ⊆ main ⊆ edge
 All tracked changes originate on `edge`, including fixes, reverts,
 documentation, and Beads updates. Work directly on `edge` by default.
 
+Promote whole revisions, never selected commits. Review every accumulated
+change since the target channel's current revision. No cherry-picks, merge
+commits, direct channel commits, or skipped stages. If an urgent fix follows
+unaccepted work, accept that work too, revert it on `edge`, or defer promotion.
+
 `edge` is the active development and experimental dogfood channel. `main` is a
 promotion-only accepted-development channel. After an `edge` revision is
 accepted and verified for `main`, advance `main` to that exact revision with:
@@ -491,8 +496,8 @@ git push origin <sha>:main
 
 `stable` is the promotion-only user channel. Advance it only when the user
 explicitly requests promotion. A candidate must be a fast-forward from the
-current `stable`, belong to `main`, pass the protected Linux and cache checks,
-pass the release checks for its changed surface, and have fresh-session dogfood
+current `stable`, belong to `main`, pass the protected `linux`, both cache
+publication checks, and `release-gate`, and have fresh-session dogfood
 for user-visible runtime interaction changes. Do not promote a commit with a
 known P0 or P1 regression. Promote the exact verified revision with:
 
@@ -500,6 +505,15 @@ known P0 or P1 regression. Promote the exact verified revision with:
 git push origin <sha>:stable
 ```
 
+Ordinary Stable promotions wait at least seven days after the last promotion,
+including an urgent promotion. Explicitly requested urgent fixes may bypass
+only this wait, never verification or whole-candidate acceptance. Routine docs
+and planning wait for the next eligible promotion. Record the candidate, proof,
+actual promotion time, and any urgency reason in the owning Bead.
+
+GitHub requires linear history and status checks, including for administrators,
+on `main` and `stable`. Ancestry through the immediate predecessor, cadence,
+scope acceptance, and dogfood are maintainer checks before the push.
 Never delete `stable`.
 
 ### Beads
@@ -554,8 +568,9 @@ Shared changes must not be accepted or promoted from Linux evidence alone:
   that revision; dispatch it after changing the workflow itself.
 - On `main`, require green CI plus both `Publish Nix Cache` jobs:
   `publish_x86_64_linux` and `publish_aarch64_darwin`.
-- For a release candidate, require both `Version Gate` jobs and the protected
-  Linux and Darwin cache checks before promoting `stable`.
+- For a release candidate, require `Version Gate`'s `release-gate`, which
+  requires both native build jobs to succeed, and the protected Linux and
+  Darwin cache checks before promoting `stable`. Skipped work is not proof.
 
 `nix flake show --all-systems` and Darwin derivation evaluation on Linux prove
 flake shape only; they do not replace a real `aarch64-darwin` build. Linux-only

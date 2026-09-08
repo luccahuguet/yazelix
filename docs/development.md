@@ -8,17 +8,21 @@ The Home Manager evaluation guard overrides nixpkgs with the reviewed revision
 in `checks/newer-nixpkgs.txt` on Linux and Darwin, exercising the consumer
 `follows` path with the existing configuration and package-override cases.
 Ordinary CI evaluates this override; heavy compatibility builds run in Version Gate.
-`Publish Nix Cache` publishes all four Linux capability variants, the Main and
-Edge full-package launcher outputs, and representative Home Manager closures
-from `main` and manual dispatch. `Version Gate` is manual and
+`Publish Nix Cache` publishes Linux and Darwin capability variants, the Main and
+Edge Linux full-package launcher outputs, and representative Home Manager closures
+from `main` and manual dispatch. Missing cache credentials fail publication;
+a successful required publishing job must perform the work. `Version Gate` is manual and
 includes all four Linux profile shapes, all four `aarch64-darwin` packages,
 the Darwin Home Manager closure, and the Darwin Rio, no-Helix, and host-Yazi
 contracts. Its two native jobs also build the complete Home Manager check with
 the same reviewed nixpkgs override, including customized configuration and
 installed-command checks. Both builds must pass before release acceptance;
 evaluation alone does not satisfy this gate. Other builds retain `flake.lock`.
-Version Gate allows one active run and one pending run, with two jobs limited
-to 90 minutes each. Compatibility builds reuse the existing Nix limits: two
+Version Gate allows one active run and one pending run, with two native jobs
+limited to 90 minutes each and a five-minute `release-gate` aggregate. The
+aggregate runs even after a dependency fails and succeeds only when both native
+jobs succeed; failure, cancellation, and skipping cannot satisfy it.
+Compatibility builds reuse the existing Nix limits: two
 build jobs on Linux and one on Darwin, with two cores per build. They record
 elapsed time, runner disk availability, and the check output path.
 There are no compatibility-build push/PR triggers, cache uploads or secrets;
@@ -44,6 +48,12 @@ All development commits land on `edge`, including fixes, reverts,
 documentation, and Beads updates. CI runs there, and users who select `edge`
 accept the active experimental dogfood channel.
 
+Keep `stable ⊆ main ⊆ edge` on one linear history. A promotion includes every
+accumulated commit up to the candidate, including changes unrelated to the fix
+that motivated it. Review that whole range. If intervening work is unaccepted,
+accept it, revert it on `edge`, or defer promotion. Do not cherry-pick fixes,
+commit directly to the promotion channels, or skip a channel.
+
 `main` is promotion-only accepted development. After an `edge` revision is
 accepted and verified, advance `main` to that exact revision without merging or
 cherry-picking. CI and cache publishing run on `main`, and users who select it
@@ -53,24 +63,38 @@ accept more frequent updates than `stable`:
 git fetch origin edge main
 git merge-base --is-ancestor origin/main <sha>
 git merge-base --is-ancestor <sha> origin/edge
+git log --oneline origin/main..<sha>
+git diff origin/main <sha>
 git push origin <sha>:main
 ```
 
 The protected `stable` branch accepts fast-forward promotions from `main`. Its
-required checks are `linux`, `publish_x86_64_linux`, and
-`publish_aarch64_darwin`, including for maintainers. GitHub rejects force-pushes
-and branch deletion.
+required checks are `linux`, `publish_x86_64_linux`,
+`publish_aarch64_darwin`, and `release-gate`, sourced from GitHub Actions.
+`main` requires `linux`. Both branches enforce checks for administrators,
+require linear history, and reject force-pushes and branch deletion.
 
 Before promotion, verify that the candidate descends from the current `stable`,
-belongs to `main`, passes the release checks for its changed surface, and has no
+belongs to `main`, passes all required checks on that exact SHA, and has no
 known P0 or P1 regression. User-visible runtime interaction changes also need a
-fresh-session dogfood pass. Promote at most once per week unless an urgent fix
-needs an earlier release:
+fresh-session dogfood pass. Ordinary promotions wait at least seven days after
+the last Stable promotion, including an urgent one. Routine documentation and
+planning changes wait for that window. Explicitly requested urgent fixes may
+skip the wait, with the same verification and acceptance of the whole candidate.
+There is no automatic weekly release and no release when the gate fails.
+
+Record the candidate range, exact proof, actual promotion time, and any urgency
+reason in the owning Bead. Use the actual previous promotion time, not the source
+commit date. GitHub enforces status and linear-history requirements; checking
+predecessor membership, cadence, acceptance, and dogfood remains the maintainer's
+responsibility. Run the push only after all checks pass:
 
 ```sh
 git fetch origin main stable
 git merge-base --is-ancestor origin/stable <sha>
 git merge-base --is-ancestor <sha> origin/main
+git log --oneline origin/stable..<sha>
+git diff origin/stable <sha>
 git push origin <sha>:stable
 ```
 
@@ -162,15 +186,15 @@ git ls-files | grep -Ev '^\.beads/|\.lock$|^assets/' | xargs wc -l
 | --- | ---: |
 | Ignore (`.gitignore`) | 19 |
 | License | 201 |
-| Markdown | 4537 |
+| Markdown | 4594 |
 | JSON | 117 |
 | Nix | 1898 |
 | Shell | 126 |
-| YAML | 471 |
+| YAML | 470 |
 | TOML | 523 |
 | KDL | 257 |
 | Nu | 14 |
 | Lua | 133 |
 | Rust | 20485 |
 | Text | 85 |
-| Total | 28866 |
+| Total | 28922 |
