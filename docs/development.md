@@ -25,9 +25,11 @@ Three dependent Darwin jobs exercise the same reviewed override:
    installed-command assertions. It does not publish another closure.
 
 Each stage checks out the same candidate SHA and reads `checks/newer-nixpkgs.txt`.
-Prerequisite paths come from successful job outputs. `nix copy --from` restores
-those exact closures from Cachix without a build fallback; missing paths or a
-failed copy, build, or publication fail the stage. Rerun a failed job after
+Prerequisite paths come from successful job outputs. `nix-store --realise` restores
+those exact closures through the configured caches, including Cachix and
+`cache.nixos.org`; Cachix omits paths already available upstream. Local and remote
+builds are disabled during restoration. Missing paths or failed restoration,
+build, or publication fail the stage. Rerun a failed job after
 addressing its failure; completed prerequisites remain in the shared cache.
 
 Cache writes use the existing `CACHIX_AUTH_TOKEN` only in the two prerequisite
@@ -205,15 +207,15 @@ git ls-files | grep -Ev '^\.beads/|\.lock$|^assets/' | xargs wc -l
 | --- | ---: |
 | Ignore (`.gitignore`) | 19 |
 | License | 201 |
-| Markdown | 4613 |
+| Markdown | 4615 |
 | JSON | 117 |
 | Nix | 1900 |
 | Shell | 126 |
-| YAML | 568 |
+| YAML | 569 |
 | TOML | 523 |
 | KDL | 257 |
 | Nu | 14 |
 | Lua | 133 |
 | Rust | 20492 |
 | Text | 85 |
-| Total | 29048 |
+| Total | 29051 |

@@ -193,7 +193,8 @@ jobs:
         run: |
           jq --raw-output '.[] | .outputs.path | if type == "string" and length > 0 then . else error("Missing prerequisite output") end' <<< "$NEEDS_JSON" |
             while IFS= read -r path; do
-              nix copy --from https://yazelix.cachix.org "$path"
+              # Cachix omits dependencies already available from cache.nixos.org.
+              nix-store --realise --max-jobs 0 --builders '' "$path"
               nix path-info --json --closure-size "$path"
             done
 
