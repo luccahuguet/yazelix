@@ -27,6 +27,7 @@ plugins {
             agent {
                 command "@yzxAgent@"
                 pane_title "agent_popup"
+                command_marker "/bin/yzx-agent"
                 preserve_terminal_title true
                 toggle_close_behavior "hide"
             }
@@ -60,7 +61,7 @@ plugins {
     yazelix_pane_orchestrator location="@yzxPaneOrchestrator@" {
         screen_saver_enabled false
         popup_plugin_url "yzpp"
-        managed_agent_command_marker "@yzxAgent@"
+        managed_agent_command_marker "/bin/yzx-agent"
     }
 
     radar location="@zjRadar@" {

@@ -1244,6 +1244,7 @@ mod tests {
                     "                arg_2 \"resume\"\n",
                     "                arg_3 \"--dangerously-bypass-approvals-and-sandbox\"\n",
                     "                pane_title \"agent_popup\"\n",
+                    "                command_marker \"/bin/yzx-agent\"\n",
                     "                preserve_terminal_title true\n",
                     "                toggle_close_behavior \"hide\"\n",
                     "            }}",

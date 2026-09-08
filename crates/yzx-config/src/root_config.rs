@@ -373,7 +373,7 @@ fn render_agent_popup_kdl(command: &str, args: &[String]) -> String {
         ));
     }
     text.push_str(
-        "                pane_title \"agent_popup\"\n                preserve_terminal_title true\n                toggle_close_behavior \"hide\"\n            }",
+        "                pane_title \"agent_popup\"\n                command_marker \"/bin/yzx-agent\"\n                preserve_terminal_title true\n                toggle_close_behavior \"hide\"\n            }",
     );
     text
 }

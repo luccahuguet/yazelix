@@ -4,6 +4,9 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Agent popup toggles recognize running agents after a runtime update, preserving
+  their titles and processes instead of opening duplicate panes.
+
 - Home Manager consumers can follow newer nixpkgs without requiring its stock
   Zellij version to match Nova's build recipe. Nova retains its pinned Zellij
   fork; CI evaluates representative Linux and Darwin Home Manager configurations

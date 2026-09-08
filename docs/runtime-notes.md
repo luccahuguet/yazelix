@@ -205,6 +205,10 @@ Radar hooks. Nova does not query Codex for activity or provide an equivalent
 hookless fallback. Without those hooks, ordinary pane and command information
 remains available, but Codex activity reporting is unavailable.
 
+Agent popup identity uses the stable `/bin/yzx-agent` command marker. A runtime
+update can change the launcher's store path without losing the running popup,
+including when the agent supplies its own terminal title.
+
 The packaged agent launcher gives the pane its initial `agent popup` terminal title,
 then replaces itself with `[agent].command`. The default `auto` chooses a
 provider once per state directory. On first launch it checks `PATH` in this

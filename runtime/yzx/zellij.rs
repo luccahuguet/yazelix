@@ -247,7 +247,7 @@ fn patch_agent_popup(
         return Ok(text);
     }
     let marker = format!(
-        "            agent {{\n                command {}\n                pane_title \"agent_popup\"\n                preserve_terminal_title true\n                toggle_close_behavior \"hide\"\n            }}",
+        "            agent {{\n                command {}\n                pane_title \"agent_popup\"\n                command_marker \"/bin/yzx-agent\"\n                preserve_terminal_title true\n                toggle_close_behavior \"hide\"\n            }}",
         kdl_string(YZX_AGENT),
     );
     if !text.contains(&marker) {
