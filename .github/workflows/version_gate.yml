@@ -81,7 +81,7 @@ jobs:
       - name: Build Home Manager with newer nixpkgs
         run: |
           df -h /
-          time nix build --no-link --no-write-lock-file --print-out-paths --print-build-logs --max-jobs 1 \
+          time nix build --no-link --no-write-lock-file --print-out-paths --print-build-logs \
             --override-input nixpkgs "$(cat checks/newer-nixpkgs.txt)" \
             .#checks.x86_64-linux.home_manager
 
@@ -126,6 +126,6 @@ jobs:
       - name: Build Home Manager with newer nixpkgs
         run: |
           df -h /
-          time nix build --no-link --no-write-lock-file --print-out-paths --print-build-logs --max-jobs 1 \
+          time nix build --no-link --no-write-lock-file --print-out-paths --print-build-logs \
             --override-input nixpkgs "$(cat checks/newer-nixpkgs.txt)" \
             .#checks.aarch64-darwin.home_manager

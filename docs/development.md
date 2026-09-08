@@ -18,8 +18,9 @@ the same reviewed nixpkgs override, including customized configuration and
 installed-command checks. Both builds must pass before release acceptance;
 evaluation alone does not satisfy this gate. Other builds retain `flake.lock`.
 Version Gate allows one active run and one pending run, with two jobs limited
-to 90 minutes each. Compatibility builds use one Nix build job at a time and
-record elapsed time, runner disk availability, and the check output path.
+to 90 minutes each. Compatibility builds reuse the existing Nix limits: two
+build jobs on Linux and one on Darwin, with two cores per build. They record
+elapsed time, runner disk availability, and the check output path.
 There are no compatibility-build push/PR triggers, cache uploads or secrets;
 manual runs in forks use the same read-only workflow. Review the comparison pin
 deliberately and verify both native builds when changing it. This proves the
@@ -161,7 +162,7 @@ git ls-files | grep -Ev '^\.beads/|\.lock$|^assets/' | xargs wc -l
 | --- | ---: |
 | Ignore (`.gitignore`) | 19 |
 | License | 201 |
-| Markdown | 4474 |
+| Markdown | 4475 |
 | JSON | 117 |
 | Nix | 1898 |
 | Shell | 126 |
@@ -172,4 +173,4 @@ git ls-files | grep -Ev '^\.beads/|\.lock$|^assets/' | xargs wc -l
 | Lua | 133 |
 | Rust | 20485 |
 | Text | 85 |
-| Total | 28803 |
+| Total | 28804 |
