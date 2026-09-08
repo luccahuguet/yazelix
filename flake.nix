@@ -737,9 +737,11 @@
               --replace-fail '@bar@' "$bar"
           '';
           swap = pkgs.replaceVars ./defaults/zellij/layout.swap.kdl {
-            sidebar = ''{
+            sidebar = ''
+              {
                 plugin location="radar"
-            }'';
+              }
+            '';
           };
         in
           pkgs.runCommand "yzx-zellij-layout" {} ''
