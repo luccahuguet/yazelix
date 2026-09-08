@@ -10,8 +10,9 @@ in `checks/newer-nixpkgs.txt` on Linux and Darwin, exercising the consumer
 Ordinary CI evaluates this override; heavy compatibility builds run in Version Gate.
 `Publish Nix Cache` publishes Linux and Darwin capability variants, the Main and
 Edge Linux full-package launcher outputs, and representative Home Manager closures
-from `main` and manual dispatch. Missing cache credentials fail publication;
-a successful required publishing job must perform the work. `Version Gate` is manual and
+from `main` and manual dispatch. Both jobs push the requested output closures
+synchronously, including substituted outputs. Missing credentials or failed
+uploads fail the job. `Version Gate` is manual and
 includes all four Linux profile shapes, all four `aarch64-darwin` packages,
 the Darwin Home Manager closure, and the Darwin Rio, no-Helix, and host-Yazi
 contracts. Its two native jobs also build the complete Home Manager check with
@@ -186,15 +187,15 @@ git ls-files | grep -Ev '^\.beads/|\.lock$|^assets/' | xargs wc -l
 | --- | ---: |
 | Ignore (`.gitignore`) | 19 |
 | License | 201 |
-| Markdown | 4594 |
+| Markdown | 4595 |
 | JSON | 117 |
 | Nix | 1898 |
 | Shell | 126 |
-| YAML | 470 |
+| YAML | 473 |
 | TOML | 523 |
 | KDL | 257 |
 | Nu | 14 |
 | Lua | 133 |
 | Rust | 20485 |
 | Text | 85 |
-| Total | 28922 |
+| Total | 28926 |

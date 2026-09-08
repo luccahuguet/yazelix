@@ -55,11 +55,13 @@ jobs:
             max-jobs = 1
             cores = 2
 
-      - name: Configure Cachix
+      - name: Configure Cachix client
         uses: cachix/cachix-action@v17
         with:
           name: yazelix
           authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
+          # Background hooks cannot prove publication for this required check.
+          skipPush: true
 
       - name: Build and publish package and Home Manager closures
         run: |
@@ -74,7 +76,8 @@ jobs:
             .#packages.x86_64-linux.yazelix-no-rio-no-helix \
             .#packages.x86_64-linux.yazelix-no-rio-no-yazi \
             .#packages.x86_64-linux.yazelix-no-rio-no-helix-no-yazi \
-            .#checks.x86_64-linux.home_manager
+            .#checks.x86_64-linux.home_manager \
+            | cachix push yazelix
 
   publish_aarch64_darwin:
     if: github.repository_id == '746026727'
