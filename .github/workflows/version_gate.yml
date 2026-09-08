@@ -7,7 +7,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: version-gate-${{ github.workflow }}-${{ github.run_id }}
+  group: version-gate
   cancel-in-progress: false
 
 jobs:
@@ -78,6 +78,13 @@ jobs:
           grep -F 'ok    Configuration    settings valid' "$RUNNER_TEMP/yzx-doctor.txt"
           grep -F 'Yazelix Nova tutor lessons' "$RUNNER_TEMP/yzx-tutor-list.txt"
 
+      - name: Build Home Manager with newer nixpkgs
+        run: |
+          df -h /
+          time nix build --no-link --no-write-lock-file --print-out-paths --print-build-logs --max-jobs 1 \
+            --override-input nixpkgs "$(cat checks/newer-nixpkgs.txt)" \
+            .#checks.x86_64-linux.home_manager
+
   macos-package-smoke:
     runs-on: macos-15
     timeout-minutes: 90
@@ -115,3 +122,10 @@ jobs:
             .#checks.aarch64-darwin.host_yazi_contracts \
             .#checks.aarch64-darwin.rio_contracts \
             .#checks.aarch64-darwin.no_helix_contracts
+
+      - name: Build Home Manager with newer nixpkgs
+        run: |
+          df -h /
+          time nix build --no-link --no-write-lock-file --print-out-paths --print-build-logs --max-jobs 1 \
+            --override-input nixpkgs "$(cat checks/newer-nixpkgs.txt)" \
+            .#checks.aarch64-darwin.home_manager

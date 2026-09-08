@@ -4,16 +4,27 @@
 
 Normal CI runs Linux checks and the Darwin no-Helix evaluation guard on push,
 pull request, and manual dispatch
-The Home Manager evaluation guard also overrides nixpkgs with a reviewed
-revision containing Zellij 0.45.1 on Linux and Darwin, exercising the consumer
+The Home Manager evaluation guard overrides nixpkgs with the reviewed revision
+in `checks/newer-nixpkgs.txt` on Linux and Darwin, exercising the consumer
 `follows` path with the existing configuration and package-override cases.
-This guards evaluation; package builds still use the repository lockfile.
+Ordinary CI evaluates this override; heavy compatibility builds run in Version Gate.
 `Publish Nix Cache` publishes all four Linux capability variants, the Main and
 Edge full-package launcher outputs, and representative Home Manager closures
 from `main` and manual dispatch. `Version Gate` is manual and
 includes all four Linux profile shapes, all four `aarch64-darwin` packages,
 the Darwin Home Manager closure, and the Darwin Rio, no-Helix, and host-Yazi
-contracts.
+contracts. Its two native jobs also build the complete Home Manager check with
+the same reviewed nixpkgs override, including customized configuration and
+installed-command checks. Both builds must pass before release acceptance;
+evaluation alone does not satisfy this gate. Other builds retain `flake.lock`.
+Version Gate allows one active run and one pending run, with two jobs limited
+to 90 minutes each. Compatibility builds use one Nix build job at a time and
+record elapsed time, runner disk availability, and the check output path.
+There are no compatibility-build push/PR triggers, cache uploads or secrets;
+manual runs in forks use the same read-only workflow. Review the comparison pin
+deliberately and verify both native builds when changing it. This proves the
+reviewed pin, not every future nixpkgs revision. Retain compatibility failures
+and measured runner limits before changing the pin or expanding the CI budget.
 `Darwin Package Smoke` runs the same Darwin verification weekly on Monday when
 `main` has commits in the last 7 days, and on manual dispatch always, while
 idle weeks skip the macOS build. Both macOS jobs assert that Darwin packages
@@ -112,6 +123,13 @@ nix build .#checks.x86_64-linux.no_helix_contracts --no-link
 nix build .#checks.x86_64-linux.yzx_yazi_materialization --no-link
 ```
 
+Run the release compatibility check locally on the matching native platform
+(replace `x86_64-linux` with `aarch64-darwin` on Apple Silicon):
+
+```nu
+nix build --no-link --no-write-lock-file --print-out-paths --print-build-logs --override-input nixpkgs (open --raw checks/newer-nixpkgs.txt | str trim) .#checks.x86_64-linux.home_manager
+```
+
 Runtime package changes should also pass a temporary profile install:
 
 ```sh
@@ -143,15 +161,15 @@ git ls-files | grep -Ev '^\.beads/|\.lock$|^assets/' | xargs wc -l
 | --- | ---: |
 | Ignore (`.gitignore`) | 19 |
 | License | 201 |
-| Markdown | 4455 |
+| Markdown | 4474 |
 | JSON | 117 |
 | Nix | 1898 |
 | Shell | 126 |
-| YAML | 457 |
+| YAML | 471 |
 | TOML | 523 |
 | KDL | 257 |
 | Nu | 14 |
 | Lua | 133 |
 | Rust | 20485 |
-| Text | 84 |
-| Total | 28769 |
+| Text | 85 |
+| Total | 28803 |

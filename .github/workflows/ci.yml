@@ -44,7 +44,7 @@ jobs:
           # Zellij 0.45.1 recipe: exercise consumer nixpkgs overrides (#694).
           for system in x86_64-linux aarch64-darwin; do
             nix eval --raw --no-write-lock-file \
-              --override-input nixpkgs github:NixOS/nixpkgs/dc5d91f840324650bac8c379428c7037a416959a \
+              --override-input nixpkgs "$(cat checks/newer-nixpkgs.txt)" \
               ".#checks.$system.home_manager.drvPath"
           done
 

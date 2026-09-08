@@ -558,10 +558,10 @@ runtime-tool sourcing, and bundled KGP package behavior.
 
 ## LOC Scorecard
 
-Yazelix owns **28,769 lines** of tracked text project files. The
+Yazelix owns **28,803 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
-This is 1,264 lines above the pre-Rio fork surface. The current surface
+This is 1,298 lines above the pre-Rio fork surface. The current surface
 also records terminal-free packages, the exact Zellij v0.45.0 fork boundary
 and bounded session probes, Yazi 26.8.15 and its one-use picker, Forest and the
 configurable Radar-default sidebar, portable Codex hook onboarding, the
@@ -577,8 +577,9 @@ Rio settings add one native-inventory consumer and a contract check; Rio retains
 its defaults and validation, and Nova enables blur in newly seeded configs.
 The Helix grammar source check consumes Nova Helix's verified snapshots to keep
 Codeberg outages out of evaluation and builds; third-party sources stay in Helix.
-The nixpkgs compatibility guard reuses Home Manager checks to cover newer Zellij
-build recipes without adding a second package owner.
+The nixpkgs compatibility guard shares one reviewed pin between ordinary
+evaluation and native Linux/Darwin release builds of existing Home Manager checks.
+The added lines provide bounded build coverage without another package owner.
 Radar owns the 30-minute transition from a smooth spinner to static yellow `⠿`;
 Nova's added lines document the behavior and pin its child artifact.
 The activity cleanup lives in the child repositories; their deletions are
