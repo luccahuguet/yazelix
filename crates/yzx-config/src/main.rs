@@ -157,7 +157,7 @@ mod tests {
         env, fs,
         path::{Path, PathBuf},
         process,
-        time::{SystemTime, UNIX_EPOCH},
+        sync::atomic::{AtomicUsize, Ordering},
     };
 
     use crate::file_actions::*;
@@ -189,16 +189,23 @@ mod tests {
 
     impl TempHome {
         fn new() -> Self {
-            let path = env::temp_dir().join(format!(
-                "yzx-config-test-{}-{}",
-                process::id(),
-                SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap()
-                    .as_nanos()
-            ));
-            fs::create_dir_all(&path).unwrap();
-            Self { path }
+            static COUNTER: AtomicUsize = AtomicUsize::new(0);
+            for _ in 0..100 {
+                let path = env::temp_dir().join(format!(
+                    "yzx-config-test-{}-{}",
+                    process::id(),
+                    COUNTER.fetch_add(1, Ordering::Relaxed)
+                ));
+                match fs::create_dir(&path) {
+                    Ok(()) => return Self { path },
+                    Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+                    Err(error) => panic!(
+                        "could not create test directory {}: {error}",
+                        path.display()
+                    ),
+                }
+            }
+            panic!("could not create unique yzx-config test directory");
         }
     }
 
