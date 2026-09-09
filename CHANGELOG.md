@@ -4,6 +4,9 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Packaged Yazi and `ya` use 26.9.1 with its paired official configuration
+  schemas, terminal-probe fixes, and updated native Kitty image handling.
+
 - Radar's Nix packages use explicit names, removing Crane's placeholder-name
   warnings during evaluation and builds.
 
