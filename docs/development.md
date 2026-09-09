@@ -138,6 +138,47 @@ If Yazelix saves you time, you can support continued development on [GitHub Spon
 For existing releases, save the original body and metadata, append only the footer,
 and verify the published body, tags, titles, flags and assets through the GitHub API.
 
+## Dependency updates
+
+Lucca owns a monthly dependency review and may delegate it to an agent. Review
+the current Edge pins during the first maintenance session each month; an
+available update does not require adoption. Prefer suitable official releases
+for third-party tools. Use reviewed commits where the dependency's integration
+branch or release model requires them. Versions remain owned by `flake.nix`,
+`flake.lock`, package definitions and child manifests.
+
+Review related changes together: Yazi and `ya` must stay paired with compatible
+schemas, presets and plugins. Review nixpkgs deliberately because child inputs
+that follow it share the changed package graph. Consume verified first-party
+fixes and features, such as a Radar fork revision, when Nova needs them without
+waiting for the monthly review. Compare forks with their intended integration
+branch; a newer commit elsewhere does not make the accepted pin stale.
+
+Relevant security fixes and serious user regressions receive prompt review.
+Major or API-breaking updates may wait for dedicated compatibility work.
+Choose updates for a concrete benefit and keep unrelated changes separable;
+the review does not authorize a broad lock refresh or automatic merge.
+
+Start with release notes, source comparisons and focused local checks. Selected
+updates follow the existing [CI](#ci), [local verification](#local-development)
+and platform gates in `AGENTS.md`: shared package changes need exact-revision
+Linux CI, Darwin Package Smoke and installed-artifact proof, plus fresh-session
+dogfood for interaction changes. Discovery alone needs no native builds. Keep
+existing build limits; diagnose a failed candidate, narrow the update or defer
+it with its reason and revisit condition in the owning maintenance Bead. One
+review may record several deferrals without creating an issue for each version.
+Record the review date, inspected revision and outcome even when no update is
+selected. Schedule material implementation work separately under the issue rules.
+
+Monthly review balances staleness against maintainer effort and native build
+cost. Weekly broad updates spend that budget too often; release-only review can
+leave dependencies unattended. Adoption on Edge and [channel promotion](#edge-main-and-stable)
+remain separate decisions; the Stable interval does not schedule dependency bumps.
+
+Monthly and manual update reporting is planned in Bead
+`yazelix-5vl-dependency-update-report-qjjt`. Until implemented, perform discovery
+manually. The report assists review; the maintainer owns adoption.
+
 ## Local development
 
 Use local sibling repositories while hacking runtime inputs:
@@ -211,7 +252,7 @@ git ls-files | grep -Ev '^\.beads/|\.lock$|^assets/' | xargs wc -l
 | --- | ---: |
 | Ignore (`.gitignore`) | 19 |
 | License | 201 |
-| Markdown | 4622 |
+| Markdown | 4665 |
 | JSON | 117 |
 | Nix | 1900 |
 | Shell | 126 |
@@ -222,4 +263,4 @@ git ls-files | grep -Ev '^\.beads/|\.lock$|^assets/' | xargs wc -l
 | Lua | 133 |
 | Rust | 20492 |
 | Text | 85 |
-| Total | 29070 |
+| Total | 29113 |
