@@ -501,17 +501,17 @@
         "systems": "systems"
       },
       "locked": {
-        "lastModified": 1788644118,
-        "narHash": "sha256-ic3Aw7lTAVrOJ3RbunpB0Mv1JGtaQMJq6qy6H26lxzg=",
+        "lastModified": 1788988166,
+        "narHash": "sha256-Km81umxSpNwLjBuM52GS5OIuL9wDe+LeBBm3HBHKn5E=",
         "owner": "Yazelix",
         "repo": "nova-rio",
-        "rev": "bdf8e51d673da634582cf2b54ad5d19479cb6b39",
+        "rev": "478374be22c5b8be35867ccb226fbfe8713b94bb",
         "type": "github"
       },
       "original": {
         "owner": "Yazelix",
         "repo": "nova-rio",
-        "rev": "bdf8e51d673da634582cf2b54ad5d19479cb6b39",
+        "rev": "478374be22c5b8be35867ccb226fbfe8713b94bb",
         "type": "github"
       }
     },

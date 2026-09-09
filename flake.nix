@@ -15,7 +15,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     rio = {
-      url = "github:Yazelix/nova-rio/bdf8e51d673da634582cf2b54ad5d19479cb6b39";
+      url = "github:Yazelix/nova-rio/478374be22c5b8be35867ccb226fbfe8713b94bb";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     yazelixZellij = {

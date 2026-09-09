@@ -6,7 +6,9 @@ User-visible runtime changes for Yazelix Nova live here.
 
 - Packaged Yazi and `ya` use 26.9.1 with paired schemas. Zellij preserves
   distinct Kitty image crops and their source offsets, and refreshes scaled
-  images when terminal cell dimensions change.
+  images when terminal cell dimensions change. Rio waits for pending Vulkan
+  frames before freeing preview textures on Linux, preventing GPU resources
+  from being destroyed while still in use.
 
 - Radar's Nix packages use explicit names, removing Crane's placeholder-name
   warnings during evaluation and builds.
