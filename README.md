@@ -563,10 +563,10 @@ runtime-tool sourcing, and bundled KGP package behavior.
 
 ## LOC Scorecard
 
-Yazelix owns **29,113 lines** of tracked text project files. The
+Yazelix owns **29,476 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
-This is 1,608 lines above the pre-Rio fork surface. The current surface
+This is 1,971 lines above the pre-Rio fork surface. The current surface
 also records terminal-free packages, the exact Zellij v0.45.0 fork boundary
 and bounded session probes, Yazi 26.8.15 and its one-use picker, Forest and the
 configurable Radar-default sidebar, portable Codex hook onboarding, the
@@ -580,6 +580,7 @@ sponsor surface, release-note footer and installed-runtime checks while deleting
 persistent tiled-Yazi machinery.
 Release policy requires whole-revision promotions, published gate results and explicit cache uploads.
 Dependency guidance defines monthly review, update ownership and verification.
+The monthly/manual report reads existing pins, compares intended sources and checks partial failures offline.
 Rio settings add one native-inventory consumer and a contract check; Rio retains
 its defaults and validation, and Nova enables blur in newly seeded configs.
 The Helix grammar source check consumes Nova Helix's verified snapshots to keep

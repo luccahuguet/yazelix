@@ -175,9 +175,46 @@ cost. Weekly broad updates spend that budget too often; release-only review can
 leave dependencies unattended. Adoption on Edge and [channel promotion](#edge-main-and-stable)
 remain separate decisions; the Stable interval does not schedule dependency bumps.
 
-Monthly and manual update reporting is planned in Bead
-`yazelix-5vl-dependency-update-report-qjjt`. Until implemented, perform discovery
-manually. The report assists review; the maintainer owns adoption.
+The **Dependency Updates** workflow reports available changes in its Actions run
+summary on the first of each month at 12:23 UTC and on manual dispatch. It checks
+out Edge once and identifies that inventory's exact revision. Open
+[Dependency Updates](https://github.com/Yazelix/nova/actions/workflows/dependency_updates.yml),
+select a run and read its summary. To request a report:
+
+```sh
+gh workflow run dependency_updates.yml --repo Yazelix/nova --ref edge
+```
+
+GitHub runs schedules from the default branch, Main. Scheduling becomes active
+when the workflow reaches Main through normal promotion; an Edge-only workflow
+does not establish an active schedule. GitHub may delay scheduled runs, so a
+missing report does not replace the maintainer's monthly review.
+
+The report groups Yazi/ya integration pins and covers direct flake inputs plus
+Nova's explicit Yazi and tokenusage packages. GitHub supplies full releases and
+exact branch comparisons; crates.io supplies tokenusage's stable release.
+Comparison branches absent from commit-pinned URLs live in
+`.github/scripts/dependency_report.py`; current versions stay in their manifests.
+New pinned sources without comparison policy require review. The two explicit
+package readers accept their existing literal Nix declarations and report an
+incomplete inventory if those declarations become computed or change shape.
+Nixpkgs tool versions and child internals remain with their owners.
+
+Available updates, pins ahead of branches and divergent history are review
+findings. Missing policy, malformed data and failed API requests mark the report
+incomplete and fail the run. Nothing updates pins, builds packages or decides
+compatibility. One canonical-repository Linux job has a ten-minute limit,
+read-only access and one active run. API requests have eight-second socket
+timeouts, a 4 MiB response limit and no retries. There are no custom secrets,
+cache writes, uploaded artifacts or issue notifications. Expand the budget only
+when measured coverage or failures justify it; simplify or remove the checker
+if its reports do not assist review.
+
+Run the offline report contract without credentials or network access:
+
+```sh
+python3 -B -m unittest discover -s .github/scripts -p 'test_dependency_report.py'
+```
 
 ## Local development
 
@@ -252,15 +289,16 @@ git ls-files | grep -Ev '^\.beads/|\.lock$|^assets/' | xargs wc -l
 | --- | ---: |
 | Ignore (`.gitignore`) | 19 |
 | License | 201 |
-| Markdown | 4665 |
+| Markdown | 4704 |
 | JSON | 117 |
 | Nix | 1900 |
 | Shell | 126 |
-| YAML | 581 |
+| YAML | 615 |
 | TOML | 523 |
 | KDL | 257 |
 | Nu | 14 |
 | Lua | 133 |
 | Rust | 20492 |
 | Text | 85 |
-| Total | 29113 |
+| Python | 290 |
+| Total | 29476 |

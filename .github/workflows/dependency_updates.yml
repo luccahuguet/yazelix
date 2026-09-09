@@ -1,0 +1,34 @@
+name: Dependency Updates
+
+on:
+  schedule:
+    - cron: "23 12 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-updates
+  cancel-in-progress: false
+
+jobs:
+  report:
+    if: github.repository_id == '746026727'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out Edge inventory and reporter
+        uses: actions/checkout@v6
+        with:
+          ref: edge
+          persist-credentials: false
+
+      - name: Check report contract offline
+        run: python3 -B -m unittest discover -s .github/scripts -p 'test_dependency_report.py'
+
+      - name: Report available updates
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: python3 .github/scripts/dependency_report.py | tee "$GITHUB_STEP_SUMMARY"
