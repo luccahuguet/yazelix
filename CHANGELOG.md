@@ -4,8 +4,9 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
-- Packaged Yazi and `ya` use 26.8.15 and its paired schemas to avoid Yazi
-  26.9.1 preview corruption in Zellij and reported Rio GPU hangs.
+- Packaged Yazi and `ya` use 26.9.1 with paired schemas. Zellij preserves
+  distinct Kitty image crops and their source offsets, and refreshes scaled
+  images when terminal cell dimensions change.
 
 - Radar's Nix packages use explicit names, removing Crane's placeholder-name
   warnings during evaluation and builds.

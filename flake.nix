@@ -19,7 +19,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     yazelixZellij = {
-      url = "github:Yazelix/nova-zellij/796a30c44c8c4369021e7bb91e2b6c62cfc257de";
+      url = "github:Yazelix/nova-zellij/a0797d44f876c35308b26166efccc71fb63b68e1";
       flake = false;
     };
     yazelixHelix = {
@@ -76,7 +76,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     yaziSchemas = {
-      url = "github:yazi-rs/schemas/c24ee499e7ba84b89fcc7357f6c40aeadc5000a5";
+      url = "github:yazi-rs/schemas/0a86623a771139104eba47c87ef669dfb280c61c";
       flake = false;
     };
     zjstatus = {
@@ -130,21 +130,21 @@
         overlays = [
           (final: prev: {
             yazi-unwrapped = prev.yazi-unwrapped.overrideAttrs (finalAttrs: previousAttrs: {
-              version = "26.8.15";
-              env = previousAttrs.env // {VERGEN_BUILD_DATE = "2026-08-15";};
+              version = "26.9.1";
+              env = previousAttrs.env // {VERGEN_BUILD_DATE = "2026-09-01";};
               passthru = previousAttrs.passthru // {
                 srcs = previousAttrs.passthru.srcs // {
                   code_src = final.fetchFromGitHub {
                     owner = "sxyazi";
                     repo = "yazi";
                     tag = "v${finalAttrs.version}";
-                    hash = "sha256-/BD8rpnje3sIQjQe6fSYJY8u9ypJmUPrX9rNnDS86Ns=";
+                    hash = "sha256-/8j4bEbT8DR/xlWtt62FXVyeHyWtBlvV8Rq0VbtY6ms=";
                   };
                 };
               };
               cargoDeps = final.rustPlatform.fetchCargoVendor {
                 inherit (finalAttrs) pname version srcs sourceRoot;
-                hash = "sha256-YV986OaXk7+0jw0DnD/ydKJTmO0pOGjkVyq6OR3nTOE=";
+                hash = "sha256-V69VxhMiTY1Tgo4aW06AjwBIoXjK0Ov6oIahxk0NzGg=";
               };
             });
             yazi = prev.yazi.override {yazi-unwrapped = final.yazi-unwrapped;};
@@ -541,7 +541,7 @@
         opener = "YZX_ZELLIJ=${yazelixZellijPackage}/bin/zellij ${yzxOpenCore}/bin/yzx-open";
       };
       yzxYaziConfig =
-        assert pkgs.yazi-unwrapped.version == "26.8.15";
+        assert pkgs.yazi-unwrapped.version == "26.9.1";
           pkgs.runCommand "yzx-yazi-config" {} ''
         install -D -m 644 ${./defaults/yazi/init.lua} "$out/init.lua"
         install -D -m 644 ${./defaults/yazi/keymap.toml} "$out/keymap.toml"
