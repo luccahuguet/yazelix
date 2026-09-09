@@ -961,17 +961,17 @@
     "yaziSchemas": {
       "flake": false,
       "locked": {
-        "lastModified": 1788955613,
-        "narHash": "sha256-G6UkkZ4Oos+aNEJpn5g1SIfgnoS7AbXGgCvNR59HbHY=",
+        "lastModified": 1782872204,
+        "narHash": "sha256-q+XOC3wVQwpqk7SDlrLJccDtEL7tPqpXl+W50SLCJrM=",
         "owner": "yazi-rs",
         "repo": "schemas",
-        "rev": "0a86623a771139104eba47c87ef669dfb280c61c",
+        "rev": "c24ee499e7ba84b89fcc7357f6c40aeadc5000a5",
         "type": "github"
       },
       "original": {
         "owner": "yazi-rs",
         "repo": "schemas",
-        "rev": "0a86623a771139104eba47c87ef669dfb280c61c",
+        "rev": "c24ee499e7ba84b89fcc7357f6c40aeadc5000a5",
         "type": "github"
       }
     },
