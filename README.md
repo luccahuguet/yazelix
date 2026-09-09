@@ -564,11 +564,11 @@ runtime-tool sourcing, and bundled KGP package behavior.
 
 ## LOC Scorecard
 
-Yazelix owns **29,485 lines** of tracked text project files. The
+Yazelix owns **29,486 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
 The README displays the project motto beneath its logo.
-This is 1,980 lines above the pre-Rio fork surface. The current surface
+This is 1,981 lines above the pre-Rio fork surface. The current surface
 also records terminal-free packages, the exact Zellij v0.45.0 fork boundary
 and bounded session probes, Yazi 26.9.1 with paired schemas and corrected Kitty
 previews and Rio GPU lifetimes, its one-use picker, Forest and the configurable Radar-default sidebar,

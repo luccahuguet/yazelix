@@ -8,7 +8,8 @@ User-visible runtime changes for Yazelix Nova live here.
   distinct Kitty image crops and their source offsets, and refreshes scaled
   images when terminal cell dimensions change. Rio waits for pending Vulkan
   frames before freeing preview textures on Linux, preventing GPU resources
-  from being destroyed while still in use.
+  from being destroyed while still in use. Presentation semaphores are reused
+  only after their swapchain image is acquired again.
 
 - Radar's Nix packages use explicit names, removing Crane's placeholder-name
   warnings during evaluation and builds.
