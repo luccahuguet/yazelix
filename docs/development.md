@@ -48,6 +48,10 @@ time at 455 minutes per invocation. Linux keeps two Nix build jobs, Darwin one,
 with two cores each. Stage limits retain the existing cap until native timings
 support tighter bounds. The aggregate requires all five jobs to succeed, even
 after a dependency fails; failed, cancelled, or skipped work cannot satisfy it.
+Manual workflow checks do not appear in GitHub's protection status summary.
+The aggregate publishes its result as the `release-gate` commit status for the
+exact candidate. Only this canonical-repository job has `statuses: write`;
+failed publication fails the gate. Branch protection keeps requiring that status.
 Review the comparison pin deliberately and verify all native stages when
 changing it. This proves the reviewed pin, not every future nixpkgs revision.
 Retain compatibility failures and measured limits before expanding the CI budget.
@@ -207,15 +211,15 @@ git ls-files | grep -Ev '^\.beads/|\.lock$|^assets/' | xargs wc -l
 | --- | ---: |
 | Ignore (`.gitignore`) | 19 |
 | License | 201 |
-| Markdown | 4618 |
+| Markdown | 4622 |
 | JSON | 117 |
 | Nix | 1900 |
 | Shell | 126 |
-| YAML | 569 |
+| YAML | 581 |
 | TOML | 523 |
 | KDL | 257 |
 | Nu | 14 |
 | Lua | 133 |
 | Rust | 20492 |
 | Text | 85 |
-| Total | 29054 |
+| Total | 29070 |

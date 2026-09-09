@@ -13,14 +13,26 @@ concurrency:
 jobs:
   release-gate:
     needs: [linux-profile-smoke, macos-package-smoke, darwin-core, darwin-editor, darwin-integration]
-    if: always()
+    if: always() && github.repository_id == '746026727'
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      statuses: write
     steps:
       - name: Require every release check
         env:
           NEEDS_JSON: ${{ toJSON(needs) }}
-        run: jq --exit-status 'length > 0 and all(.[]; .result == "success")' <<< "$NEEDS_JSON"
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          state=failure
+          if jq --exit-status 'length > 0 and all(.[]; .result == "success")' <<< "$NEEDS_JSON"; then
+            state=success
+          fi
+          gh api --method POST "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" \
+            -f context=release-gate -f state="$state" \
+            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            -f description='Native release checks' > /dev/null
+          test "$state" = success
 
   linux-profile-smoke:
     runs-on: ubuntu-latest
