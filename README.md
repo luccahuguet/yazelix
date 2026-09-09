@@ -2,6 +2,7 @@
 
 <div align="center">
   <img src="assets/logo.png" alt="Yazelix logo" width="200"/>
+  <p><strong>Delight is the only option.</strong></p>
 </div>
 
 Yazelix Nova is a Nix-packaged terminal workspace built around
@@ -563,10 +564,11 @@ runtime-tool sourcing, and bundled KGP package behavior.
 
 ## LOC Scorecard
 
-Yazelix owns **29,476 lines** of tracked text project files. The
+Yazelix owns **29,478 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
-This is 1,971 lines above the pre-Rio fork surface. The current surface
+The README displays the project motto beneath its logo.
+This is 1,973 lines above the pre-Rio fork surface. The current surface
 also records terminal-free packages, the exact Zellij v0.45.0 fork boundary
 and bounded session probes, Yazi 26.8.15 and its one-use picker, Forest and the
 configurable Radar-default sidebar, portable Codex hook onboarding, the
