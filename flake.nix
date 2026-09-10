@@ -41,6 +41,7 @@
     yazelixZellijPopup = {
       url = "github:Yazelix/zellij-popup";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.fenix.follows = "novaBar/fenix";
       inputs.flake-utils.follows = "yazelixZellijPaneOrchestrator/flake-utils";
     };
     novaBar = {

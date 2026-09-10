@@ -564,11 +564,11 @@ runtime-tool sourcing, and bundled KGP package behavior.
 
 ## LOC Scorecard
 
-Yazelix owns **29,504 lines** of tracked text project files. The
+Yazelix owns **29,514 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
 The README displays the project motto beneath its logo.
-This is 1,999 lines above the pre-Rio fork surface. The current surface
+This is 2,009 lines above the pre-Rio fork surface. The current surface
 also records terminal-free packages, the exact Zellij v0.45.0 fork boundary
 and bounded session probes, Yazi 26.9.1 with paired schemas, corrected Kitty
 crops, Sixel preview cleanup and Rio GPU lifetimes, its one-use picker, Forest and the configurable Radar-default sidebar,
@@ -584,6 +584,8 @@ persistent tiled-Yazi machinery.
 Release policy requires whole-revision promotions, published gate results and explicit cache uploads.
 Dependency guidance defines monthly review, update ownership and verification.
 Shared flake inputs consolidate equivalent toolchain and utility graphs.
+Popup shares the existing Fenix group; its rebuild keeps Rust 1.95.0, and
+dependency guidance names the consumers to review together on later updates.
 The monthly/manual report reads existing pins, compares intended sources and checks partial failures offline.
 Rio settings add one native-inventory consumer and a contract check; Rio retains
 its defaults and validation, and Nova enables blur in newly seeded configs.

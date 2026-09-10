@@ -4,6 +4,10 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Popup shares Nova Bar's Fenix input and root nixpkgs, removing its separate
+  toolchain package graph. Rust remains at 1.95.0; the Popup WASM is rebuilt
+  with the shared packaging environment and retains its existing build recipe.
+
 - Nova shares equivalent Fenix and flake-utils inputs across child packages,
   reducing duplicate lockfile graphs while preserving packaged build outputs.
 

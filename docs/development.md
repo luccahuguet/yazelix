@@ -147,12 +147,15 @@ for third-party tools. Use reviewed commits where the dependency's integration
 branch or release model requires them. Versions remain owned by `flake.nix`,
 `flake.lock`, package definitions and child manifests.
 
-Nova Bar, Anima and the pane orchestrator share Fenix; the pane orchestrator,
-popup, Radar and zjstatus share flake-utils. Nova's `follows` declarations own
-this selection. Keep other child toolchain pins separate when consolidation
-changes their build outputs. Compare affected derivations across supported
-systems before changing these shared inputs; equal repository names or Rust
-versions alone do not establish equivalent builds.
+Nova Bar, Anima, Popup and the pane orchestrator share Nova Bar's Fenix input
+and its followed root nixpkgs. Review all four consumers when either input
+changes, including native WASI builds and Popup interactions. The pane
+orchestrator, Popup, Radar and zjstatus share flake-utils. Nova's `follows`
+declarations own this selection; each child retains its build recipe.
+Helix keeps its independent overlay so Rio updates do not select its development
+tools. Other toolchain alignment requires an explicit maintenance benefit and
+compatibility decision. Compare affected derivations across supported systems;
+equal repository names or Rust versions alone do not establish equivalent builds.
 
 Review related changes together: Yazi and `ya` must stay paired with compatible
 schemas, presets and plugins. Review nixpkgs deliberately because child inputs
@@ -296,9 +299,9 @@ git ls-files | grep -Ev '^\.beads/|\.lock$|^assets/' | xargs wc -l
 | --- | ---: |
 | Ignore (`.gitignore`) | 19 |
 | License | 201 |
-| Markdown | 4727 |
+| Markdown | 4736 |
 | JSON | 117 |
-| Nix | 1905 |
+| Nix | 1906 |
 | Shell | 126 |
 | YAML | 615 |
 | TOML | 523 |
@@ -308,4 +311,4 @@ git ls-files | grep -Ev '^\.beads/|\.lock$|^assets/' | xargs wc -l
 | Rust | 20492 |
 | Text | 85 |
 | Python | 290 |
-| Total | 29504 |
+| Total | 29514 |
