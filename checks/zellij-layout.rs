@@ -207,11 +207,21 @@ fn bar_layout_is_valid(layout: &str) -> bool {
     let bars = layout.matches("share/nova_bar/zjstatus.wasm").count();
     let native_status_bars = layout.matches(r#"plugin location="status-bar""#).count();
     let tab_only_bars = layout.matches(r#"format_left   "{tabs}""#).count();
-    let version_widget = r#"{command_version} " // {datetime}"#;
+    let segmented_bars = layout
+        .lines()
+        .filter(|line| line.trim().starts_with("format_right_separator "))
+        .count();
+    let version_widgets = layout
+        .lines()
+        .filter(|line| {
+            line.trim().starts_with("format_right ") && line.contains("{command_version}")
+        })
+        .count();
     bars == 3
         && native_status_bars == 3
         && tab_only_bars == 3
-        && layout.matches(&version_widget).count() == bars
+        && segmented_bars == bars
+        && version_widgets == bars
         && rendered_bar_widgets_are_valid(layout)
         && !layout.contains(r#"YZX " // {datetime}"#)
         && !layout.contains("NOVA ")
