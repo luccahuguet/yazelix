@@ -577,11 +577,11 @@ runtime-tool sourcing, and bundled KGP package behavior.
 
 ## LOC Scorecard
 
-Yazelix owns **29,559 lines** of tracked text project files. The
+Yazelix owns **29,561 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
 The README displays the project motto beneath its logo.
-This is 2,054 lines above the pre-Rio fork surface. The current surface
+This is 2,056 lines above the pre-Rio fork surface. The current surface
 also records terminal-free packages, the exact Zellij v0.45.0 fork boundary
 and bounded session probes, Yazi 26.9.1 with paired schemas, corrected Kitty
 crops, Sixel preview cleanup and Rio GPU lifetimes, its one-use picker, Forest and the configurable Radar-default sidebar,
@@ -616,6 +616,7 @@ The activity cleanup lives in the child repositories; their deletions are
 outside this score. Nova's additions document the 1.2 candidate and its checks.
 Tabs-first bar fitting also lives in Nova Bar and zjstatus. Nova documents the
 right-to-left widget removal order, checks segment configuration and pins the children.
+Hidden widget updates remain owned by zjstatus; Nova pins the corrected child.
 The Anima update adds 30 lines to expose its current styles, document navigation,
 and check that every advertised style is accepted by Nova's welcome config.
 The tab-mode chord change adds 15 lines to document and check `Ctrl t` passthrough.
