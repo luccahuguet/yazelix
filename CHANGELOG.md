@@ -4,6 +4,9 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- `yzx-zellij` invokes Nova's exact packaged Zellij inside or outside a session.
+  Use `yzx enter` or `yzx launch` for managed Nova workspace startup.
+
 - Popup shares Nova Bar's Fenix input and root nixpkgs, removing its separate
   toolchain package graph. Rust remains at 1.95.0; the Popup WASM is rebuilt
   with the shared packaging environment and retains its existing build recipe.

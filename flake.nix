@@ -880,7 +880,8 @@
           paths = [command yazi zjRadarCliPackage] ++ pkgs.lib.optional withDesktop desktop;
           postBuild =
             ''
-              ${yazelixZellijPackage}/bin/zellij --config ${configKdl} setup --check >/dev/null
+              ln -s ${yazelixZellijPackage}/bin/zellij "$out/bin/yzx-zellij"
+              "$out/bin/yzx-zellij" --config ${configKdl} setup --check >/dev/null
               install -d "$out/libexec/yazelix"
               ln -s ${yzxZellijConfig}/bin/yzx-zellij-config "$out/libexec/yazelix/yzx-zellij-config"
               ln -s ${yzxConfig}/bin/yzx-config "$out/libexec/yazelix/yzx-config"

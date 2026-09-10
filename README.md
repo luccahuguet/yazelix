@@ -326,6 +326,7 @@ Ratconfig's Keys tab is the complete packaged reference, and
 | `yzx --version` | Print the exact package-owned Yazelix version |
 | `yzx launch [zellij-args...]` | Open Rio first, then start managed Zellij |
 | `yzx enter [zellij-args...]` | Start managed Zellij in the current terminal |
+| `yzx-zellij [args...]` | Invoke Nova's exact packaged Zellij CLI |
 | `yzx run <program> [args...]` | Run exact argv inside the prepared Yazelix environment |
 | `yzx config` | Open the Ratconfig-backed config UI |
 | `yzx yazi-config materialize --user-config-dir <path> --state-dir <path>` | Materialize and print the effective Yazi config directory for automation |
@@ -338,6 +339,16 @@ Ratconfig's Keys tab is the complete packaged reference, and
 | `yzx tutor [lesson]` | Print guided Yazelix lessons |
 | `yzx anima [style]` | Show a terminal animation with Anima |
 | `yzx reveal <target>` | Start the persistent Yazi popup at an absolute, cwd-relative, or `~/` file or directory |
+
+`yzx-zellij` is available inside and outside Nova sessions. It invokes the
+packaged Zellij directly with native arguments and behavior; the host's `zellij`
+command stays separate. Use `yzx enter` or `yzx launch` to prepare and start a
+managed Nova workspace.
+
+```sh
+yzx-zellij --version
+yzx-zellij --help
+```
 
 The materializer uses the selected Yazelix package's config and does not start
 Yazi or prepare the interactive runtime. See [Runtime Notes](docs/runtime-notes.md#yazi)
@@ -564,11 +575,11 @@ runtime-tool sourcing, and bundled KGP package behavior.
 
 ## LOC Scorecard
 
-Yazelix owns **29,514 lines** of tracked text project files. The
+Yazelix owns **29,531 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
 The README displays the project motto beneath its logo.
-This is 2,009 lines above the pre-Rio fork surface. The current surface
+This is 2,026 lines above the pre-Rio fork surface. The current surface
 also records terminal-free packages, the exact Zellij v0.45.0 fork boundary
 and bounded session probes, Yazi 26.9.1 with paired schemas, corrected Kitty
 crops, Sixel preview cleanup and Rio GPU lifetimes, its one-use picker, Forest and the configurable Radar-default sidebar,
@@ -584,6 +595,8 @@ persistent tiled-Yazi machinery.
 Release policy requires whole-revision promotions, published gate results and explicit cache uploads.
 Dependency guidance defines monthly review, update ownership and verification.
 Shared flake inputs consolidate equivalent toolchain and utility graphs.
+The packaged `yzx-zellij` symlink exposes the selected child CLI; added lines
+document direct access and reuse the existing package check.
 Popup shares the existing Fenix group; its rebuild keeps Rust 1.95.0, and
 dependency guidance names the consumers to review together on later updates.
 The monthly/manual report reads existing pins, compares intended sources and checks partial failures offline.
