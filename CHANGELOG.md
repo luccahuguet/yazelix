@@ -5,6 +5,7 @@ User-visible runtime changes for Yazelix Nova live here.
 ## Unreleased
 
 - `yzx-zellij` invokes Nova's exact packaged Zellij inside or outside a session.
+  Managed commands and panes resolve it without the installed profile on PATH.
   Use `yzx enter` or `yzx launch` for managed Nova workspace startup.
 
 - Popup shares Nova Bar's Fenix input and root nixpkgs, removing its separate

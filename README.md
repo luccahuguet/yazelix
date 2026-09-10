@@ -344,13 +344,15 @@ Ratconfig's Keys tab is the complete packaged reference, and
 packaged Zellij directly with native arguments and behavior; the host's `zellij`
 command stays separate. Use `yzx enter` or `yzx launch` to prepare and start a
 managed Nova workspace.
+Nova's managed PATH includes `yzx-zellij` even when the launcher is invoked by
+absolute path or through `nix run`, without the installed profile on PATH.
 
 ```sh
 yzx-zellij --version
 yzx-zellij --help
 ```
 
-The materializer uses the selected Yazelix package's config and does not start
+The Yazi materializer uses the selected Yazelix package's config and does not start
 Yazi or prepare the interactive runtime. See [Runtime Notes](docs/runtime-notes.md#yazi)
 for its output, validation, and exit-status contract.
 
@@ -575,11 +577,11 @@ runtime-tool sourcing, and bundled KGP package behavior.
 
 ## LOC Scorecard
 
-Yazelix owns **29,531 lines** of tracked text project files. The
+Yazelix owns **29,542 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
 The README displays the project motto beneath its logo.
-This is 2,026 lines above the pre-Rio fork surface. The current surface
+This is 2,037 lines above the pre-Rio fork surface. The current surface
 also records terminal-free packages, the exact Zellij v0.45.0 fork boundary
 and bounded session probes, Yazi 26.9.1 with paired schemas, corrected Kitty
 crops, Sixel preview cleanup and Rio GPU lifetimes, its one-use picker, Forest and the configurable Radar-default sidebar,
@@ -595,8 +597,8 @@ persistent tiled-Yazi machinery.
 Release policy requires whole-revision promotions, published gate results and explicit cache uploads.
 Dependency guidance defines monthly review, update ownership and verification.
 Shared flake inputs consolidate equivalent toolchain and utility graphs.
-The packaged `yzx-zellij` symlink exposes the selected child CLI; added lines
-document direct access and reuse the existing package check.
+One packaged `yzx-zellij` symlink serves the public package and managed PATH;
+added lines protect narrow-PATH invocation in the existing native package check.
 Popup shares the existing Fenix group; its rebuild keeps Rust 1.95.0, and
 dependency guidance names the consumers to review together on later updates.
 The monthly/manual report reads existing pins, compares intended sources and checks partial failures offline.

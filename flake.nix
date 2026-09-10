@@ -613,6 +613,12 @@
         };
         doCheck = false;
       });
+      yzxZellij = pkgs.linkFarm "yzx-zellij" [
+        {
+          name = "bin/yzx-zellij";
+          path = "${yazelixZellijPackage}/bin/zellij";
+        }
+      ];
       mkYzx = {
         channel ? "stable",
         withRio,
@@ -852,6 +858,7 @@
             managedEditor
             yazi
             zjRadarCliPackage
+            yzxZellij
           ];
         };
         src = pkgs.runCommand "yzx-command-${variant}-src" {} ''
@@ -877,10 +884,9 @@
       in
         pkgs.symlinkJoin {
           inherit name;
-          paths = [command yazi zjRadarCliPackage] ++ pkgs.lib.optional withDesktop desktop;
+          paths = [command yazi zjRadarCliPackage yzxZellij] ++ pkgs.lib.optional withDesktop desktop;
           postBuild =
             ''
-              ln -s ${yazelixZellijPackage}/bin/zellij "$out/bin/yzx-zellij"
               "$out/bin/yzx-zellij" --config ${configKdl} setup --check >/dev/null
               install -d "$out/libexec/yazelix"
               ln -s ${yzxZellijConfig}/bin/yzx-zellij-config "$out/libexec/yazelix/yzx-zellij-config"
@@ -1498,6 +1504,8 @@
           grep -Fq 'this package omits Rio; use yzx enter' "$root/launch-error"
           "$package/bin/yzx" enter --version > "$root/enter-version"
           grep -q '^zellij ' "$root/enter-version"
+          "$package/bin/yzx" run yzx-zellij --version > "$root/alias-version"
+          test "$(cat "$root/enter-version")" = "$(cat "$root/alias-version")"
           test ! -e "$YAZELIX_CONFIG_HOME/rio"
         }
 
