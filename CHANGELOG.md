@@ -4,6 +4,9 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Nova shares equivalent Fenix and flake-utils inputs across child packages,
+  reducing duplicate lockfile graphs while preserving packaged build outputs.
+
 - Packaged Yazi and `ya` use 26.9.1 with paired schemas. Zellij preserves
   distinct Kitty image crops and their source offsets, and refreshes scaled
   images when terminal cell dimensions change. Rio waits for pending Vulkan

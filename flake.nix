@@ -41,6 +41,7 @@
     yazelixZellijPopup = {
       url = "github:Yazelix/zellij-popup";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-utils.follows = "yazelixZellijPaneOrchestrator/flake-utils";
     };
     novaBar = {
       url = "github:Yazelix/nova-bar";
@@ -50,14 +51,17 @@
     yazelixZellijPaneOrchestrator = {
       url = "github:Yazelix/zellij-pane-orchestrator";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.fenix.follows = "novaBar/fenix";
     };
     zjRadar = {
       url = "github:Yazelix/zj-radar/166626879b2067561915d7c60781932c809939d2";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-utils.follows = "yazelixZellijPaneOrchestrator/flake-utils";
     };
     yazelixScreen = {
       url = "github:Yazelix/anima";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.fenix.follows = "novaBar/fenix";
     };
     autoLayoutYazi = {
       url = "github:Yazelix/auto-layout.yazi/6c4be74524e821e7a06aeb2f4d85a031c468def0";
@@ -82,6 +86,7 @@
     zjstatus = {
       url = "github:Yazelix/zjstatus/yazelix-tab-activity-pipe";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-utils.follows = "yazelixZellijPaneOrchestrator/flake-utils";
     };
   };
 
