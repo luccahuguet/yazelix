@@ -67,7 +67,7 @@ an Advanced diagnostic with an exact `config.toml` action
 | `welcome.duration_seconds` | `3` | All | Startup splash duration, 1 to 60 seconds |
 | `keybindings.sidebar` | `Alt Shift H` | Overview | Hide or show the managed sidebar |
 | `keybindings.sidebar_focus` | `Ctrl y` | Overview | Toggle focus between Forest and managed Helix |
-| `bar.widgets` | `editor`, `shell`, `term`, `codex_usage`, `cpu`, `ram` | Overview | Top bar widgets, left to right |
+| `bar.widgets` | `editor`, `shell`, `term`, `codex_usage`, `cpu`, `ram` | Overview | Top bar widgets, left to right; leftmost survive longest when tabs need space |
 
 Anima owns the animation set and random selection. `static`, `logo`, and
 `friends_and_enemies` require explicit selection; `random` excludes them.

@@ -45,7 +45,7 @@
       inputs.flake-utils.follows = "yazelixZellijPaneOrchestrator/flake-utils";
     };
     novaBar = {
-      url = "github:Yazelix/nova-bar";
+      url = "github:Yazelix/nova-bar/edge";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.zjstatus.follows = "zjstatus";
     };

@@ -4,6 +4,11 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- The top bar preserves tabs by removing complete widgets from the right as
+  space runs out, starting with the version badge. Widgets and separators return
+  as space permits. When tabs alone overflow, the active tab remains visible and
+  its name shortens only after neighboring tabs are removed.
+
 - `yzx-zellij` invokes Nova's exact packaged Zellij inside or outside a session.
   Managed commands and panes resolve it without the installed profile on PATH.
   Use `yzx enter` or `yzx launch` for managed Nova workspace startup.
