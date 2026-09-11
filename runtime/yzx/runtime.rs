@@ -17,7 +17,7 @@ use crate::{
     error::{AppError, path_error, startup},
     paths::{config_home, home_dir, nonempty_env, parent, runtime_path, state_dir},
     yazi::YaziRuntime,
-    zellij::{active_layout, active_zellij_config},
+    zellij::{active_layout, active_zellij_config, render_bar_background_plugin_block},
 };
 
 pub(crate) struct Runtime {
@@ -109,7 +109,10 @@ fn seed_plugin_permissions(path: &Path, radar_enabled: bool) -> Result<(), AppEr
         ),
         (
             NOVA_BAR_WASM,
-            "ReadApplicationState ChangeApplicationState RunCommands",
+            concat!(
+                "ReadApplicationState ChangeApplicationState RunCommands ",
+                "MessageAndLaunchOtherPlugins",
+            ),
         ),
         (
             ZJ_RADAR_WASM,
@@ -274,6 +277,8 @@ impl Runtime {
             radar_enabled,
             materialize,
         )?;
+        let bar_controller =
+            render_bar_background_plugin_block(&appearance_mode, &bar_widgets, &shell_program)?;
         let zellij_sidecar = config_home.join("zellij/config.kdl");
         let zellij_plugins_sidecar = config_home.join("zellij/plugins.kdl");
         let zellij_text = run_checked(
@@ -302,6 +307,7 @@ impl Runtime {
             &zellij_plugins_sidecar,
             &home_dir,
             radar_enabled,
+            &bar_controller,
             materialize,
         )?;
         let zellij_status_cache = state_dir.join("zellij/session/status_bar_cache.json");

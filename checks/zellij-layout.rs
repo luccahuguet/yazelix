@@ -206,45 +206,15 @@ fn layout_order_is_valid(layout: &str) -> bool {
 fn bar_layout_is_valid(layout: &str) -> bool {
     let bars = layout.matches("share/nova_bar/zjstatus.wasm").count();
     let native_status_bars = layout.matches(r#"plugin location="status-bar""#).count();
-    let tab_only_bars = layout.matches(r#"format_left   "{tabs}""#).count();
-    let segmented_bars = layout
-        .lines()
-        .filter(|line| line.trim().starts_with("format_right_separator "))
-        .count();
-    let version_widgets = layout
-        .lines()
-        .filter(|line| {
-            line.trim().starts_with("format_right ") && line.contains("{command_version}")
-        })
-        .count();
+    let views = layout.matches(r#"role "view""#).count();
     bars == 3
         && native_status_bars == 3
-        && tab_only_bars == 3
-        && segmented_bars == bars
-        && version_widgets == bars
-        && rendered_bar_widgets_are_valid(layout)
+        && views == bars
+        && !layout.contains("format_right")
+        && !layout.contains("command_cpu")
         && !layout.contains(r#"YZX " // {datetime}"#)
         && !layout.contains("NOVA ")
         && !layout.contains("{mode}")
         && !layout.contains("mode_normal")
         && !layout.contains(r#"plugin location="tab-bar""#)
-}
-
-fn rendered_bar_widgets_are_valid(layout: &str) -> bool {
-    [
-        " hx",
-        "❯nu",
-        "{command_term}",
-        "{command_codex_usage}",
-        "{command_cpu}",
-        "{command_ram}",
-        r#"command_term_command ""#,
-        r#"command_codex_usage_command ""#,
-        r#"command_cpu_command ""#,
-        r#"command_ram_command ""#,
-        "--display quota --periods 5h,week",
-        r#"--runtime-dir /nix/store/"#,
-    ]
-    .into_iter()
-    .all(|needle| layout.contains(needle))
 }

@@ -13,6 +13,12 @@ User-visible runtime changes for Yazelix Nova live here.
   Repeated snapshots no longer redraw the whole bar, and command-backed widgets
   appear as their results arrive instead of waiting for the next timer tick.
 
+- One background top-bar controller owns session state, rendering, and command
+  refreshes. Per-tab views render its targeted frames and forward mouse input,
+  avoiding a full zjstatus event loop and widget tray for every tab. Repeated
+  frame evaluation cannot launch a command more than once per configured
+  interval.
+
 - The top bar preserves tabs by removing complete widgets from the right as
   space runs out, starting with the version badge. Widgets and separators return
   as space permits. When tabs alone overflow, the active tab remains visible and

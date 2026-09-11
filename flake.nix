@@ -577,8 +577,9 @@
         name = "yzx-bar-render";
         runtimeInputs = [pkgs.jq];
         text = ''
+          field="''${2:-plugin_block}"
           ${novaBarPackage}/${novaBarPackage.widgetPath} render-nova-runtime --json "$1" \
-            | jq -er '.plugin_block'
+            | jq -er --arg field "$field" '.[$field]'
         '';
       };
       yzxLayoutCheck = rustBin "yzx-layout-check" ./checks/zellij-layout.rs;
@@ -649,6 +650,11 @@
             widgetTray = "__YZX_BAR_WIDGET_TRAY__";
             shellLabel = "__YZX_SHELL_LABEL__";
           }));
+        defaultBarRenderRequest = builtins.toJSON (barRenderRequest {
+          appearanceMode = "dark";
+          widgetTray = defaultBarWidgets;
+          shellLabel = defaultShellProgram;
+        });
         variantSuffix = pkgs.lib.concatStringsSep "-" (
           pkgs.lib.optional (! withRio) "no-rio"
           ++ pkgs.lib.optional (! withManagedHelix) "no-helix"
@@ -736,11 +742,7 @@
         });
         layout = let
           main = pkgs.runCommand "layout.kdl" {} ''
-            bar="$(${yzxBarRender}/bin/yzx-bar-render ${pkgs.lib.escapeShellArg (builtins.toJSON (barRenderRequest {
-              appearanceMode = "dark";
-              widgetTray = defaultBarWidgets;
-              shellLabel = defaultShellProgram;
-            }))})"
+            bar="$(${yzxBarRender}/bin/yzx-bar-render ${pkgs.lib.escapeShellArg defaultBarRenderRequest})"
             substitute ${./defaults/zellij/layout.kdl} "$out" \
               --replace-fail '@yazi@' '${yazi}/bin/yzx-yazi' \
               --replace-fail '@sidebar@' '{
@@ -783,27 +785,33 @@
               exec ${pkgs.lazygit}/bin/lazygit "$@"
             '';
           };
-        configKdl = pkgs.replaceVars ./defaults/zellij/config.kdl {
-          yzxShell = "${yzxShell}/bin/yzx-shell";
-          yzpp = "file:${yazelixZellijPopupPackage}/${yazelixZellijPopupPackage.wasmPath}";
-          yzxPaneOrchestrator = "file:${yazelixZellijPaneOrchestratorPackage}/${yazelixZellijPaneOrchestratorPackage.wasmPath}";
-          zjRadar = "file:${zjRadarPackage}/bin/zj_radar.wasm";
-          yzxAgent = "${yzxAgent}/bin/yzx-agent";
-          configKey = defaultConfig.keybindings.config;
-          agentKey = defaultConfig.keybindings.agent;
-          gitKey = defaultConfig.keybindings.git;
-          menuKey = defaultConfig.keybindings.menu;
-          screenKey = defaultConfig.keybindings.screen;
-          sidebarKey = defaultConfig.keybindings.sidebar;
-          inherit defaultPopupSideMargin defaultPopupVerticalMargin;
-          yzxConfig = "${configUi}/bin/yzx-config-ui";
-          yzxMenu = "${yzxMenu}/bin/yzx-menu";
-          yzxScreen = "${yazelixScreenPackage}/bin/anima";
-          yzxYazi = "${yazi}/bin/yzx-yazi";
-          git = "${git}/bin/yzx-git";
-          layout = "${layout}/layout.kdl";
-          layoutDir = "${layout}";
-        };
+        configKdl = let
+          base = pkgs.replaceVars ./defaults/zellij/config.kdl {
+            yzxShell = "${yzxShell}/bin/yzx-shell";
+            yzpp = "file:${yazelixZellijPopupPackage}/${yazelixZellijPopupPackage.wasmPath}";
+            yzxPaneOrchestrator = "file:${yazelixZellijPaneOrchestratorPackage}/${yazelixZellijPaneOrchestratorPackage.wasmPath}";
+            zjRadar = "file:${zjRadarPackage}/bin/zj_radar.wasm";
+            yzxAgent = "${yzxAgent}/bin/yzx-agent";
+            configKey = defaultConfig.keybindings.config;
+            agentKey = defaultConfig.keybindings.agent;
+            gitKey = defaultConfig.keybindings.git;
+            menuKey = defaultConfig.keybindings.menu;
+            screenKey = defaultConfig.keybindings.screen;
+            sidebarKey = defaultConfig.keybindings.sidebar;
+            inherit defaultPopupSideMargin defaultPopupVerticalMargin;
+            yzxConfig = "${configUi}/bin/yzx-config-ui";
+            yzxMenu = "${yzxMenu}/bin/yzx-menu";
+            yzxScreen = "${yazelixScreenPackage}/bin/anima";
+            yzxYazi = "${yazi}/bin/yzx-yazi";
+            git = "${git}/bin/yzx-git";
+            layout = "${layout}/layout.kdl";
+            layoutDir = "${layout}";
+          };
+        in
+          pkgs.runCommand "yzx-zellij-config.kdl" {} ''
+            controller="$(${yzxBarRender}/bin/yzx-bar-render ${pkgs.lib.escapeShellArg defaultBarRenderRequest} background_plugin_block)"
+            substitute ${base} "$out" --replace-fail '__YZX_NOVA_BAR_CONTROLLER__' "$controller"
+          '';
         main = pkgs.replaceVars ./runtime/yzx/main.rs {
           packageVariant = variant;
           managedHelix = if withManagedHelix then "included" else "omitted";
@@ -1149,6 +1157,8 @@
       inherit yzx;
       zjstatus_native_tabs = pkgs.runCommand "yzx-zjstatus-native-tabs-check" {nativeBuildInputs = [pkgs.ripgrep];} ''
         rg -a -q 'host_theme_mode' ${novaBarPackage}/${novaBarPackage.wasmPath}
+        rg -q 'role "view"' ${yzx}/share/yazelix/layout.kdl
+        rg -q 'role "controller"' ${yzx}/share/yazelix/config.kdl
         if rg -a -q 'tab_activity_pipe_name' ${novaBarPackage}/${novaBarPackage.wasmPath}; then
           echo 'retired tab-activity overlay remains in the packaged renderer' >&2
           exit 1
@@ -1265,8 +1275,8 @@
         grep -q 'shell: fish' status
         grep -q 'welcome enabled: false' status
         grep -q 'layout: runtime (' status
-        grep -q 'host_theme_mode "light"' "$YAZELIX_STATE_DIR/zellij/layout.kdl"
-        grep -Fq 'host_theme_light_tab_normal "#[fg=#5c5f77] [{index}] {name} "' "$YAZELIX_STATE_DIR/zellij/layout.kdl"
+        grep -q 'host_theme_mode "light"' "$YAZELIX_STATE_DIR/zellij/config.kdl"
+        grep -Fq 'host_theme_light_tab_normal "#[fg=#5c5f77] [{index}] {name} "' "$YAZELIX_STATE_DIR/zellij/config.kdl"
         grep -q 'Yazelix Nova doctor' doctor
         grep -q 'ok    Configuration    settings valid' doctor
         grep -q 'ok    Commands         shell fish · editor yzx-hx · agent auto' doctor

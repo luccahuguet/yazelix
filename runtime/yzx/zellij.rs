@@ -16,6 +16,9 @@ use crate::{
     runtime::ManagedKeybinding,
 };
 
+const BAR_CONTROLLER_START: &str = "    // BEGIN NOVA BAR CONTROLLER";
+const BAR_CONTROLLER_END: &str = "    // END NOVA BAR CONTROLLER";
+
 pub(crate) fn active_layout(
     state_dir: &Path,
     appearance_mode: &str,
@@ -56,6 +59,7 @@ pub(crate) fn active_zellij_config(
     zellij_plugins_sidecar: &Path,
     home_dir: &Path,
     radar_enabled: bool,
+    bar_controller: &str,
     materialize: bool,
 ) -> Result<(&'static str, PathBuf), AppError> {
     let runtime_config = state_dir.join("zellij/config.kdl");
@@ -98,6 +102,7 @@ pub(crate) fn active_zellij_config(
     patched =
         patch_popup_default_margins(patched, &config, popup_side_margin, popup_vertical_margin)?;
     patched = patch_managed_keybindings(patched, &config, managed_keybindings)?;
+    patched = replace_bar_controller(patched, &config, bar_controller)?;
     if !radar_enabled {
         patched = omit_radar_keybindings(patched, &config)?;
         patched = omit_radar_controller(patched, &config)?;
@@ -538,10 +543,11 @@ fn inject_snippet_before(
     Ok(text.replacen(marker, &format!("{snippet}\n{marker}"), 1))
 }
 
-fn render_bar_plugin_block(
+fn render_bar_block(
     appearance_mode: &str,
     bar_widgets: &str,
     shell_label: &str,
+    field: &str,
 ) -> Result<String, AppError> {
     let template_path = Path::new(YZX_BAR_RENDER_REQUEST);
     let template = fs::read_to_string(template_path)
@@ -552,8 +558,59 @@ fn render_bar_plugin_block(
         .replace("__YZX_SHELL_LABEL__", shell_label);
     Ok(trim_output(run_checked(
         Path::new(YZX_BAR_RENDER),
-        Command::new(YZX_BAR_RENDER).arg(request),
+        Command::new(YZX_BAR_RENDER).args([request, field.to_string()]),
     )?))
+}
+
+fn render_bar_plugin_block(
+    appearance_mode: &str,
+    bar_widgets: &str,
+    shell_label: &str,
+) -> Result<String, AppError> {
+    render_bar_block(appearance_mode, bar_widgets, shell_label, "plugin_block")
+}
+
+pub(crate) fn render_bar_background_plugin_block(
+    appearance_mode: &str,
+    bar_widgets: &str,
+    shell_label: &str,
+) -> Result<String, AppError> {
+    render_bar_block(
+        appearance_mode,
+        bar_widgets,
+        shell_label,
+        "background_plugin_block",
+    )
+}
+
+fn replace_bar_controller(
+    text: String,
+    config: &Path,
+    controller: &str,
+) -> Result<String, AppError> {
+    let start = text.find(BAR_CONTROLLER_START).ok_or_else(|| {
+        startup(
+            "Zellij config is missing the managed bar controller start marker",
+            config.display(),
+            1,
+        )
+    })? + BAR_CONTROLLER_START.len();
+    let end = text[start..]
+        .find(BAR_CONTROLLER_END)
+        .map(|offset| start + offset)
+        .ok_or_else(|| {
+            startup(
+                "Zellij config is missing the managed bar controller end marker",
+                config.display(),
+                1,
+            )
+        })?;
+    Ok(format!(
+        "{}\n{}\n{}",
+        &text[..start],
+        controller.trim(),
+        &text[end..]
+    ))
 }
 
 fn materialize_layout(

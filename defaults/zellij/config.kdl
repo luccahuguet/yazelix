@@ -80,6 +80,9 @@ plugins {
 load_plugins {
     yzpp
     radar_controller
+    // BEGIN NOVA BAR CONTROLLER
+__YZX_NOVA_BAR_CONTROLLER__
+    // END NOVA BAR CONTROLLER
     yazelix_pane_orchestrator
 }
 

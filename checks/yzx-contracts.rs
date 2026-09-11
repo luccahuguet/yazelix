@@ -607,6 +607,12 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         !runtime_config.contains("__YZX_HOME__"),
         "runtime config kept the unresolved home cwd placeholder"
     );
+    expect_contains_all! {
+        &runtime_config, "runtime bar controller";
+        "// BEGIN NOVA BAR CONTROLLER",
+        r#"role "controller""#,
+        "// END NOVA BAR CONTROLLER",
+    }
     let permissions = status_case.zellij_file("permissions.kdl");
     expect_contains_all! {
         &permissions, "runtime plugin permissions";
@@ -628,7 +634,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         ("RunCommands", 5),
         ("OpenTerminalsOrPlugins", 3),
         ("ReadCliPipes", 4),
-        ("MessageAndLaunchOtherPlugins", 2),
+        ("MessageAndLaunchOtherPlugins", 3),
     ] {
         assert_eq!(
             permissions.matches(permission).count(),
@@ -774,7 +780,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         &zellij_plugin_config, "Zellij plugin sidecar config";
         "payload \"{\\\"ok\\\": true}\" // Braces in strings must not change block depth.",
         "    } // plugin config close\n    yazelix_pane_orchestrator location=",
-        "load_plugins {\n    yzpp\n    radar_controller\n    my_plugin\n    yazelix_pane_orchestrator\n}",
+        "    my_plugin\n    yazelix_pane_orchestrator\n}",
     }
 
     let custom_keys = RuntimeCase::new(&temp.path, "custom-keys");
@@ -903,12 +909,13 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
             && !custom_layout.contains("/bin/yzx-editor"),
         "custom bar layout did not materialize only the two tiled startup Yazi pickers"
     );
-    let format_right = custom_layout
+    let custom_bar_config = custom_bar.zellij_file("config.kdl");
+    let format_right = custom_bar_config
         .lines()
         .find(|line| line.contains("format_right"))
-        .expect("custom layout is missing format_right");
+        .expect("custom controller is missing format_right");
     expect_contains_all! {
-        format_right, "custom bar layout";
+        format_right, "custom bar controller";
         "{command_claude_usage}",
         "{command_cpu}",
     }
@@ -946,9 +953,9 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         &status, "light appearance status";
         "layout: runtime (",
     }
-    let light_layout = light_bar.zellij_file("layout.kdl");
+    let light_config = light_bar.zellij_file("config.kdl");
     expect_contains_all! {
-        &light_layout, "light appearance layout";
+        &light_config, "light appearance bar controller";
         r#"host_theme_mode "light""#,
         r##"host_theme_dark_tab_normal "#[fg=#ffff00] [{index}] {name} ""##,
         r##"host_theme_light_tab_normal "#[fg=#5c5f77] [{index}] {name} ""##,
@@ -963,18 +970,18 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "shell: fish",
         "layout: runtime (",
     }
-    let custom_shell_layout = custom_shell_bar.zellij_file("layout.kdl");
+    let custom_shell_config = custom_shell_bar.zellij_file("config.kdl");
     expect_contains_all! {
-        &custom_shell_layout, "custom shell bar layout";
+        &custom_shell_config, "custom shell bar controller";
         "❯fish",
     }
     assert!(
-        !custom_shell_layout.contains("❯nu"),
-        "custom shell bar layout kept the default shell label"
+        !custom_shell_config.contains("❯nu"),
+        "custom shell bar controller kept the default shell label"
     );
     assert!(
-        !custom_shell_layout.contains("❯ fish"),
-        "custom shell bar layout inserted unwanted shell label spacing"
+        !custom_shell_config.contains("❯ fish"),
+        "custom shell bar controller inserted unwanted shell label spacing"
     );
 
     let doctor = doctor_case.run_yzx(&yzx_bin, "doctor", "yzx doctor");
@@ -2079,7 +2086,7 @@ fn expect_read_only_diagnostics(yzx: &Path) {
                         .contains("scroll_buffer_size 1234")
                 );
                 assert!(
-                    case.zellij_file("layout.kdl")
+                    case.zellij_file("config.kdl")
                         .contains("host_theme_mode \"light\"")
                 );
             }
@@ -2195,9 +2202,6 @@ fn expect_yazi_managed_keys(yzx: &Path) {
         r#"plugin location="radar""#,
         r#"pane name="yazi_picker" command="/nix/store/"#,
         r#"args "--yzx-startup-picker""#,
-        r#"host_theme_mode "dark""#,
-        r##"host_theme_dark_tab_normal "#[fg=#ffff00] [{index}] {name} ""##,
-        r##"host_theme_light_tab_normal "#[fg=#5c5f77] [{index}] {name} ""##,
     }
     assert!(
         !layout.contains("floating_panes {")
@@ -2206,6 +2210,12 @@ fn expect_yazi_managed_keys(yzx: &Path) {
         "packaged layout kept a floating picker, prestarted editor, or tiled Yazi sidebar"
     );
     let config = fs::read_to_string(yzx.join("share/yazelix/config.kdl")).unwrap();
+    expect_contains_all! {
+        &config, "packaged dark appearance bar controller";
+        r#"host_theme_mode "dark""#,
+        r##"host_theme_dark_tab_normal "#[fg=#ffff00] [{index}] {name} ""##,
+        r##"host_theme_light_tab_normal "#[fg=#5c5f77] [{index}] {name} ""##,
+    }
     let yzx_yazi = popup_command(&config, "/bin/yzx-yazi");
     let public_yzx_yazi = yzx.join("bin/yzx-yazi");
     assert_eq!(
