@@ -614,7 +614,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         "share/yazelix_zellij_popup/yzpp.wasm\" {",
         "share/nova_bar/zjstatus.wasm\" {",
         &format!(
-            "\"{}\" {{\n    ReadApplicationState\n    ChangeApplicationState\n    RunCommands\n    ReadCliPipes\n}}",
+            "\"{}\" {{\n    ReadApplicationState\n    ChangeApplicationState\n    RunCommands\n    ReadCliPipes\n    MessageAndLaunchOtherPlugins\n}}",
             radar_wasm.display()
         ),
         "share/yazelix_zellij_pane_orchestrator/yazelix_pane_orchestrator.wasm\" {",
@@ -628,6 +628,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         ("RunCommands", 5),
         ("OpenTerminalsOrPlugins", 3),
         ("ReadCliPipes", 4),
+        ("MessageAndLaunchOtherPlugins", 2),
     ] {
         assert_eq!(
             permissions.matches(permission).count(),
@@ -664,7 +665,11 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
     }
     let custom_sidebar_config = custom_sidebar.zellij_file("config.kdl");
     assert!(
-        !custom_sidebar_config.contains(r#"MessagePlugin "radar""#),
+        !custom_sidebar_config.contains(r#"MessagePlugin "radar_controller""#)
+            && !custom_sidebar_config.contains("radar_controller location=")
+            && !custom_sidebar_config
+                .lines()
+                .any(|line| line.trim() == "radar_controller"),
         "custom sidebar config kept Radar-only key routes"
     );
     expect_contains(
@@ -769,7 +774,7 @@ fn expect_front_door(yzx: &Path, jq: &Path) {
         &zellij_plugin_config, "Zellij plugin sidecar config";
         "payload \"{\\\"ok\\\": true}\" // Braces in strings must not change block depth.",
         "    } // plugin config close\n    yazelix_pane_orchestrator location=",
-        "load_plugins {\n    yzpp\n    my_plugin\n    yazelix_pane_orchestrator\n}",
+        "load_plugins {\n    yzpp\n    radar_controller\n    my_plugin\n    yazelix_pane_orchestrator\n}",
     }
 
     let custom_keys = RuntimeCase::new(&temp.path, "custom-keys");
@@ -1662,6 +1667,11 @@ fn expect_startup_diagnostics(yzx: &Path) {
             "plugins {\n    radar location=\"file:/tmp/other-radar.wasm\"\n}\n",
             "Zellij plugin sidecar plugins entry `radar` is owned by Yazelix",
         ),
+        (
+            "bad-zellij-plugin-radar-controller-id",
+            "load_plugins {\n    radar_controller\n}\n",
+            "Zellij plugin sidecar load_plugins entry `radar_controller` is owned by Yazelix",
+        ),
     ] {
         let case = RuntimeCase::new(&temp.path, name);
         case.write_default_config("");
@@ -2303,10 +2313,10 @@ fn expect_keybinds(config: &str) {
         r#"bind "Alt Shift W" { CloseTab; SwitchToMode "Normal"; }"#,
         r#"bind "Alt h" "Alt Left" { MessagePlugin "yazelix_pane_orchestrator" { name "move_focus_left_or_tab"; }; }"#,
         r#"bind "Alt l" "Alt Right" { MessagePlugin "yazelix_pane_orchestrator" { name "move_focus_right_or_tab"; }; }"#,
-        r#"bind "Ctrl Alt n" { MessagePlugin "radar" { name "zj_radar.cmd.v1"; payload "attention-next"; }; }"#,
-        r#"bind "Ctrl Alt p" { MessagePlugin "radar" { name "zj_radar.cmd.v1"; payload "attention-prev"; }; }"#,
-        r#"bind "Ctrl Tab" { MessagePlugin "radar" { name "zj_radar.cmd.v1"; payload "session-next"; }; }"#,
-        r#"bind "Ctrl Shift Tab" { MessagePlugin "radar" { name "zj_radar.cmd.v1"; payload "session-prev"; }; }"#,
+        r#"bind "Ctrl Alt n" { MessagePlugin "radar_controller" { name "zj_radar.cmd.v1"; payload "attention-next"; }; }"#,
+        r#"bind "Ctrl Alt p" { MessagePlugin "radar_controller" { name "zj_radar.cmd.v1"; payload "attention-prev"; }; }"#,
+        r#"bind "Ctrl Tab" { MessagePlugin "radar_controller" { name "zj_radar.cmd.v1"; payload "session-next"; }; }"#,
+        r#"bind "Ctrl Shift Tab" { MessagePlugin "radar_controller" { name "zj_radar.cmd.v1"; payload "session-prev"; }; }"#,
         r#"bind "Alt Shift F" { ToggleFocusFullscreen; }"#,
         r#"bind "Alt Shift A" {"#,
         r#"bind "Alt Shift H" { MessagePlugin "yazelix_pane_orchestrator" { name "toggle_sidebar"; }; }"#,
@@ -2375,6 +2385,10 @@ fn expect_first_party_plugins(git_bin: &Path, config: &str) {
         "share/yazelix_zellij_popup/yzpp.wasm",
         "share/yazelix_zellij_pane_orchestrator/yazelix_pane_orchestrator.wasm",
         r#"yazelix_pane_orchestrator location="file:/nix/store/"#,
+        r#"radar_controller location="file:/nix/store/"#,
+        "role \"view\"",
+        "role \"controller\"",
+        "load_plugins {\n    yzpp\n    radar_controller",
         "load_plugins",
         "support_kitty_keyboard_protocol true",
         "screen_saver_enabled false",

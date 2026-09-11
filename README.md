@@ -257,8 +257,11 @@ command needs neither a separate Yazi installation nor a Nix store path.
 A custom command disables Radar's key routes, permission grant, Codex setup
 prompt, and doctor diagnosis. See [Configuration](docs/configuration.md#sidebar).
 
-Radar owns activity presentation. Top-bar tabs retain native names, bells, and
-layout indicators, with no execution markers or fallback when Radar is hidden.
+Radar owns activity presentation through one background controller per session.
+The sidebar pane in each tab only displays its controller's frame and forwards
+mouse input, avoiding a full Radar event loop and session model for every tab.
+Top-bar tabs retain native names, bells, and layout indicators, with no
+execution markers or fallback when Radar is hidden.
 They render from the first ordered state snapshot in a new tab. Command-backed
 status widgets show compact loading placeholders immediately, then replace each
 placeholder as its result arrives.
@@ -275,7 +278,7 @@ cycle for the first 30 minutes of each continuous run. Longer-running jobs and
 agents show a static yellow `⠿` in pane rows and the tab's selected status;
 services keep `▸`. Status changes and lifecycle timers retain their behavior.
 Nova Zellij grants the exact
-bundled Radar artifact its four required permissions in Nova's isolated cache,
+bundled Radar artifact its five required permissions in Nova's isolated cache,
 so the unfocused startup sidebar cannot trap a consent prompt. On the first
 interactive Codex launch through Nova's agent popup, Nova checks the existing
 Radar hooks. If they are missing, it asks once whether to install them. Enter or
@@ -580,11 +583,11 @@ runtime-tool sourcing, and bundled KGP package behavior.
 
 ## LOC Scorecard
 
-Yazelix owns **29,573 lines** of tracked text project files. The
+Yazelix owns **29,639 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
 The README displays the project motto beneath its logo.
-This is 2,068 lines above the pre-Rio fork surface. The current surface
+This is 2,134 lines above the pre-Rio fork surface. The current surface
 also records terminal-free packages, the exact Zellij v0.45.0 fork boundary
 and bounded session probes, Yazi 26.9.1 with paired schemas, corrected Kitty
 crops, Sixel preview cleanup and Rio GPU lifetimes, its one-use picker, Forest and the configurable Radar-default sidebar,
@@ -614,7 +617,8 @@ evaluation and native Linux/Darwin release builds of existing Home Manager check
 Darwin uses cached stages and isolated test directories; Radar layout strings parse cleanly in Lix.
 Home Manager installation guidance explains cache setup and dependency overrides.
 Radar owns the 30-minute transition from a smooth spinner to static yellow `⠿`;
-Nova's added lines document the behavior and pin its child artifact.
+one session controller now supplies lightweight per-tab views, and Nova pins the
+child artifact.
 The activity cleanup lives in the child repositories; their deletions are
 outside this score. Nova's additions document the 1.2 candidate and its checks.
 Tabs-first bar fitting also lives in Nova Bar and zjstatus. Nova documents the

@@ -307,8 +307,8 @@ Yazelix integration owner. This uses Ratconfig's existing views, search, file
 actions, and diagnostics without extending its API or Yazelix's typed schema.
 
 `zellij/plugins.kdl` accepts only `plugins` / `load_plugins` and must not
-redeclare Yazelix-owned plugin ids (`yzpp`, `yazelix_pane_orchestrator`, or
-`radar`).
+redeclare Yazelix-owned plugin ids (`yzpp`, `yazelix_pane_orchestrator`,
+`radar`, or `radar_controller`).
 
 Inside a managed session, `yzx config` Zellij scalar saves and resets also patch
 `$YAZELIX_STATE_DIR/zellij/config.kdl` (watched active file) without wiping
@@ -421,7 +421,7 @@ Detail lives in Owners, checks, and the notes below.
 | ID | Contract | Owner | Check | Gap |
 | --- | --- | --- | --- | --- |
 | C2 | Complete Rio config is seeded once and selected through `RIO_CONFIG_HOME`; Nova owns only top-level `force-theme`, using native reload when writable and coherent next-session fallback when read-only | `defaults/rio/config.toml`, runtime, `yzx-config` | launcher/config unit tests, `yzx-contracts` | Visual dogfood |
-| C3 | Layout Radar template for swaps | `defaults/zellij/layout*.kdl` | `zellij-layout` | Live state-retention dogfood |
+| C3 | One Radar controller with per-tab views across layout swaps | `defaults/zellij/config.kdl`, `defaults/zellij/layout*.kdl`, zj-radar | `zellij-layout`, `yzx-contracts`, isolated startup benchmark | Fresh-session state-retention dogfood |
 | C4 | Packaged keys + guarded Zellij sidecar | `defaults/zellij/config.kdl`, `yzx-zellij-config` | `yzx-contracts` | Full keys |
 | C5 | Managed Nu layering | `yzx-nu`, `defaults/nu/` | `yzx-contracts` | — |
 | C6 | Managed Yazi layering, public noninteractive materialization, `yzx-open`, and zoxide | `defaults/yazi/`, `runtime/yzx-yazi.rs`, `runtime/yzx/`, `crates/yzx-yazi-config/`, `crates/yzx-open/` | host-Yazi contracts + materialization + open tests | Yazi UI |

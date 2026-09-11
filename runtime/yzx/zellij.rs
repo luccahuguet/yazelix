@@ -100,6 +100,7 @@ pub(crate) fn active_zellij_config(
     patched = patch_managed_keybindings(patched, &config, managed_keybindings)?;
     if !radar_enabled {
         patched = omit_radar_keybindings(patched, &config)?;
+        patched = omit_radar_controller(patched, &config)?;
     }
     patched = patch_agent_popup(patched, &config, agent_popup_kdl)?;
     patched = inject_snippet_before(
@@ -139,9 +140,27 @@ fn omit_radar_keybindings(mut text: String, config: &Path) -> Result<String, App
         "session-next",
         "session-prev",
     ] {
-        text = omit_managed_binding_node(text, config, "Radar", payload)?;
+        text = omit_managed_node(text, config, "Radar key binding", payload)?;
     }
     Ok(text)
+}
+
+fn omit_radar_controller(text: String, config: &Path) -> Result<String, AppError> {
+    let text = omit_managed_node(
+        text,
+        config,
+        "Radar controller plugin",
+        "radar_controller location=",
+    )?;
+    let load = "    radar_controller\n";
+    if text.matches(load).count() != 1 {
+        return Err(startup(
+            "could not omit packaged Radar controller load",
+            config.display(),
+            1,
+        ));
+    }
+    Ok(text.replacen(load, "", 1))
 }
 
 fn patch_managed_keybindings(
@@ -175,13 +194,13 @@ fn patch_managed_keybindings(
         let marker = format!("__YZX_MANAGED_KEY_{index}__");
         patched = match &binding.configured {
             Some(chord) => patched.replace(&marker, &kdl_string(chord)),
-            None => omit_managed_binding_node(patched, config, binding.label, &marker)?,
+            None => omit_managed_node(patched, config, binding.label, &marker)?,
         };
     }
     Ok(patched)
 }
 
-fn omit_managed_binding_node(
+fn omit_managed_node(
     text: String,
     config: &Path,
     label: &str,
@@ -204,7 +223,7 @@ fn omit_managed_binding_node(
     }
     if !found || depth != 0 {
         return Err(startup(
-            format!("could not omit the packaged {label} key binding"),
+            format!("could not omit packaged {label}"),
             config.display(),
             1,
         ));
@@ -260,7 +279,12 @@ fn patch_agent_popup(
     Ok(text.replacen(&marker, replacement, 1))
 }
 
-const OWNED_ZELLIJ_PLUGIN_IDS: &[&str] = &["yzpp", "yazelix_pane_orchestrator", "radar"];
+const OWNED_ZELLIJ_PLUGIN_IDS: &[&str] = &[
+    "yzpp",
+    "yazelix_pane_orchestrator",
+    "radar",
+    "radar_controller",
+];
 
 #[derive(Clone, Copy)]
 enum ZellijPluginBlock {

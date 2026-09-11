@@ -114,7 +114,10 @@ fn seed_plugin_permissions(path: &Path, radar_enabled: bool) -> Result<(), AppEr
         (
             ZJ_RADAR_WASM,
             if radar_enabled {
-                "ReadApplicationState ChangeApplicationState RunCommands ReadCliPipes"
+                concat!(
+                    "ReadApplicationState ChangeApplicationState RunCommands ReadCliPipes ",
+                    "MessageAndLaunchOtherPlugins",
+                )
             } else {
                 ""
             },

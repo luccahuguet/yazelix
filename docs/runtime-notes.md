@@ -165,10 +165,18 @@ config helper validates the pair and renders one KDL pane body; the launcher
 substitutes it into the base and swap layouts. Both providers therefore use the
 same Zellij pane named `sidebar`, including its open and collapsed sizes.
 
+The packaged Radar alias is a lightweight per-tab view. One suppressed
+`radar_controller` instance owns session state, event subscriptions, rendering,
+and command keybindings. Views send bounded dimensions and mouse input over
+plugin messages; the controller replies directly to each view's plugin id.
+Both roles request the same permission union because Zellij stores one grant per
+Wasm path. A custom sidebar omits the controller as well as Radar's bindings and
+grant.
+
 Nova captures the provider when it creates a session. It passes custom
 arguments as argv without a shell. The pane orchestrator remains
 provider-neutral and addresses the pane by name. With a custom provider, Nova
-omits Radar command bindings and permission seeding, sets
+omits Radar command bindings, controller load and permission seeding, sets
 `YZX_RADAR_ENABLED=false` for child launchers, and skips Radar's Codex doctor
 path.
 

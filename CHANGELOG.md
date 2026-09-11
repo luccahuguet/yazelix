@@ -4,6 +4,11 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Radar keeps one stateful background controller per session. Per-tab sidebar
+  panes exchange only bounded size, frame and mouse messages with it, so new
+  tabs render Radar in hundreds of milliseconds without multiplying its event
+  subscriptions and session model across every tab.
+
 - New tabs render their native tab strip from the first ordered state snapshot.
   Repeated snapshots no longer redraw the whole bar, and command-backed widgets
   appear as their results arrive instead of waiting for the next timer tick.

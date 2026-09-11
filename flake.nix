@@ -55,7 +55,7 @@
       inputs.fenix.follows = "novaBar/fenix";
     };
     zjRadar = {
-      url = "github:Yazelix/zj-radar/166626879b2067561915d7c60781932c809939d2";
+      url = "github:Yazelix/zj-radar/9beefdf9a997a9a0b206d40cccc57d4eba76a9de";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.flake-utils.follows = "yazelixZellijPaneOrchestrator/flake-utils";
     };

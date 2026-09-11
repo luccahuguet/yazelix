@@ -67,11 +67,19 @@ plugins {
     radar location="@zjRadar@" {
         naming "off"
         notify false
+        role "view"
+    }
+
+    radar_controller location="@zjRadar@" {
+        naming "off"
+        notify false
+        role "controller"
     }
 }
 
 load_plugins {
     yzpp
+    radar_controller
     yazelix_pane_orchestrator
 }
 
@@ -146,10 +154,10 @@ keybinds {
         }
         bind "Alt h" "Alt Left" { MessagePlugin "yazelix_pane_orchestrator" { name "move_focus_left_or_tab"; }; }
         bind "Alt l" "Alt Right" { MessagePlugin "yazelix_pane_orchestrator" { name "move_focus_right_or_tab"; }; }
-        bind "Ctrl Alt n" { MessagePlugin "radar" { name "zj_radar.cmd.v1"; payload "attention-next"; }; }
-        bind "Ctrl Alt p" { MessagePlugin "radar" { name "zj_radar.cmd.v1"; payload "attention-prev"; }; }
-        bind "Ctrl Tab" { MessagePlugin "radar" { name "zj_radar.cmd.v1"; payload "session-next"; }; }
-        bind "Ctrl Shift Tab" { MessagePlugin "radar" { name "zj_radar.cmd.v1"; payload "session-prev"; }; }
+        bind "Ctrl Alt n" { MessagePlugin "radar_controller" { name "zj_radar.cmd.v1"; payload "attention-next"; }; }
+        bind "Ctrl Alt p" { MessagePlugin "radar_controller" { name "zj_radar.cmd.v1"; payload "attention-prev"; }; }
+        bind "Ctrl Tab" { MessagePlugin "radar_controller" { name "zj_radar.cmd.v1"; payload "session-next"; }; }
+        bind "Ctrl Shift Tab" { MessagePlugin "radar_controller" { name "zj_radar.cmd.v1"; payload "session-prev"; }; }
         bind "Alt 1" { GoToTab 1; }
         bind "Alt 2" { GoToTab 2; }
         bind "Alt 3" { GoToTab 3; }
