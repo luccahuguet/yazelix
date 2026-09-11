@@ -2,8 +2,9 @@
 
 This file owns Nova's agent-status reference and decision evidence. It records
 the accepted `yazelix-nova-agent-command-center-srmq-2hd.1` decision and its
-implementation boundaries. Sources were rechecked on **2026-09-07**; commit
-links identify reviewed snapshots, not promises about later releases.
+implementation boundaries. The original sources were rechecked on **2026-09-07**;
+the zj-agent-mob reference was reviewed on **2026-09-11**. Commit links identify
+reviewed snapshots, not promises about later releases.
 
 ## Accepted model
 
@@ -55,6 +56,7 @@ Cost and disposition are Nova ownership judgments. No candidate code was copied.
 | --- | --- | --- | --- | --- | --- | --- |
 | Runtime: [Herdr `94f6d9c0`][herdr] | Terminal server, sessions, agent panes | Agent detection in its owned terminals | Run sessions inside Herdr | Owns terminal processes and output | Unix runtime; no Nova platform proof | Apache-2.0; replaces the runtime/session boundary. Reference only. |
 | Rail: [zj-radar `0b167260`][radar-upstream] | Activity, attention, rail | Versioned push pipe from provider producers | Explicit provider setup | App state, CLI pipes, app changes, commands; event payloads can contain task/message text | Nix CLI/WASM; Linux and macOS paths | MIT; retain the existing narrow fork and one owner. |
+| Popup/controller: [zj-agent-mob `0b2d4fc`][agent-mob] | Cross-session agent monitor, navigation and control | Claude/Codex hooks, per-agent spool files and optional process discovery | Installer edits agent hook configs; agents must restart | App state and commands; task/detail data in pipes and user-private temporary files; optional prompt approval, follow-up and injected peer context | Zellij 0.44+ WASM with Linux/macOS shell seams; no Nova platform proof | Apache-2.0; its one movable session instance and status-bar summary are useful lifecycle references. Its broader control and prompt ownership overlap Nova; reference only. |
 | Passive detector: [zj-agents `39795f26`][zj-agents] | Background classifier plus sidebar | Roughly one-second pane-text and running-command inspection | Install two WASM plugins and grant permissions | `ReadPaneContents`, app state, commands, plugin messaging | Stock Zellij ≥0.44.3; no Nova platform proof | MIT OR Apache-2.0; extra tracker and UI parsing. Conditional evaluation only. |
 | Dashboard: [Captain Miao `07e4a478`][miao] | Managed launches, profiles, local/remote sessions | Hooks and agent session/transcript data | Managed agent profiles/configuration | Codex profile contains precomputed hook trust; transcript previews | Linux/macOS; backend-specific limits | MIT; reserves configuration and session ownership. Reject dependency. |
 | Rail/bar: [Zellaude `1d1d56c6`][zellaude] | Tab bar, Claude state, notifications | Claude hooks | First load registers hooks automatically | Writes Claude settings; host commands; optional notifications | Zellij WASM; notification path is macOS-specific | MIT; duplicates the bar and does not solve Codex. Reject dependency. |
@@ -70,6 +72,11 @@ Mechanisms worth retaining as references:
   use `zj_radar.cmd.v1`. Its [permission boundary][radar-permissions]
   does not request pane-content access. Provider payloads still carry user data;
   event-driven reporting is not a claim that only status enums cross the boundary.
+- [zj-agent-mob's design][agent-mob-design] uses one on-demand movable plugin
+  instance and publishes a stable fleet-summary file and pipe for status bars.
+  Its default process discovery, prompt approval, follow-up and injected peer
+  context exceed Nova's activity-observation boundary; only the lifecycle and
+  summary mechanisms remain references.
 - [Fleet discovery][fleet-discovery] gives a fresh title match precedence over
   a stale screen scrape. [Its refresh path][fleet-refresh] selects hook-backed
   tracking when a hook record exists, with further signal fusion inside that
@@ -203,6 +210,8 @@ into runtime support or start another competing research note.
 [radar-producers]: https://github.com/marktoda/zj-radar/blob/0b1672606ca118f6241df687889142c8b52d03fe/docs/producers.md
 [radar-commands]: https://github.com/marktoda/zj-radar/blob/0b1672606ca118f6241df687889142c8b52d03fe/docs/using.md
 [radar-permissions]: https://github.com/marktoda/zj-radar/blob/0b1672606ca118f6241df687889142c8b52d03fe/crates/plugin/src/lib.rs#L191-L196
+[agent-mob]: https://github.com/mohseenrm/zj-agent-mob/tree/0b2d4fc23d26a88cf94acd07b137d04c1adf06c4
+[agent-mob-design]: https://github.com/mohseenrm/zj-agent-mob/blob/0b2d4fc23d26a88cf94acd07b137d04c1adf06c4/docs/how-it-works.md
 [herdr]: https://github.com/herdrdev/herdr/blob/94f6d9c0d9bb9cf9ffae99d8bbfb09e9bf2fc9e0/README.md
 [zj-agents]: https://github.com/kaankoken/zj-agents/blob/39795f26960505e378c619ffaf0963efd712bfeb/README.md
 [zj-agents-engine]: https://github.com/kaankoken/zj-agents/blob/39795f26960505e378c619ffaf0963efd712bfeb/crates/zj-agents-engine/src/main.rs#L62-L92
