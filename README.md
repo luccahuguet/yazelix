@@ -261,7 +261,7 @@ Radar owns activity presentation through one background controller per session.
 The sidebar pane in each tab only displays its controller's frame and forwards
 mouse input, avoiding a full Radar event loop and session model for every tab.
 Top-bar tabs retain native names, bells, and layout indicators, with no
-execution markers or fallback when Radar is hidden.
+fixed count limit, execution markers, or fallback when Radar is hidden.
 One background bar controller owns Zellij state, rendering, and command refreshes
 for the session. Per-tab bars request their width, display the matching frame,
 and forward mouse input without rebuilding the widget tray. They render from the
@@ -586,11 +586,11 @@ runtime-tool sourcing, and bundled KGP package behavior.
 
 ## LOC Scorecard
 
-Yazelix owns **29,750 lines** of tracked text project files. The
+Yazelix owns **29,753 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
 The README displays the project motto beneath its logo.
-This is 2,243 lines above the pre-Rio fork surface. The current surface
+This is 2,246 lines above the pre-Rio fork surface. The current surface
 also records terminal-free packages, the exact Zellij v0.45.0 fork boundary
 and bounded session probes, Yazi 26.9.1 with paired schemas, corrected Kitty
 crops, Sixel preview cleanup and Rio GPU lifetimes, its one-use picker, Forest and the configurable Radar-default sidebar,
@@ -625,8 +625,8 @@ one session controller now supplies the complete bar to lightweight per-tab
 views, and Nova pins the child artifact.
 The activity cleanup lives in the child repositories; their deletions are
 outside this score. Nova's additions document the 1.3 candidate and its checks.
-Tabs-first bar fitting also lives in Nova Bar and zjstatus. Nova documents the
-right-to-left widget removal order, checks segment configuration and pins the children.
+Tabs-first bar fitting and uncapped eligibility live in Nova Bar and zjstatus.
+Nova documents widget removal, checks segments and pins both children.
 Hidden widget updates remain owned by zjstatus; Nova pins the corrected child.
 New-tab ordering, controller/view delivery, command placeholders and refresh
 throttling stay in zjstatus and Nova Bar; Nova composes and pins them.

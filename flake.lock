@@ -323,11 +323,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1789145763,
-        "narHash": "sha256-5m78gnnwnAN8IgoTqbk5bf/0M7yTY9sbVySRQmmhWWQ=",
+        "lastModified": 1789166552,
+        "narHash": "sha256-Zx7WEVBYk3foGl36PGQXOaiYD8ltaeqFYM/u8bN/FrM=",
         "owner": "Yazelix",
         "repo": "nova-bar",
-        "rev": "a213af96efa455ff209c0809c86a21c614f27e44",
+        "rev": "d73f1af92817a2b1a5ce0841aae322d4463eb490",
         "type": "github"
       },
       "original": {

@@ -4,6 +4,9 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- The top bar no longer hides tabs after a fixed six-tab limit. It uses all
+  available width before collapsing tabs around the active tab.
+
 ## 1.3.0 (candidate)
 
 - Radar keeps one stateful background controller per session. Per-tab sidebar
