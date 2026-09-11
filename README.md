@@ -79,8 +79,8 @@ Linux launchers show their selected channel as `Yazelix Nova (Stable)`,
 `Yazelix Nova (Main)`, or `Yazelix Nova (Edge)`. Stable uses the default
 `yazelix` package; Main and Edge use the explicit `yazelix-main` and
 `yazelix-edge` outputs so the immutable package owns its launcher label. The
-same package identity remains visible inside sessions as `NOVA 1.2 STABLE`,
-`NOVA 1.2 MAIN`, or `NOVA 1.2 EDGE`, depending on the version and channel installed.
+same package identity remains visible inside sessions as `NOVA 1.3 STABLE`,
+`NOVA 1.3 MAIN`, or `NOVA 1.3 EDGE`, depending on the version and channel installed.
 
 Linux is the dogfooded platform. CI builds all packages and a Home Manager
 activation on `aarch64-darwin`. Sustained interactive macOS beta use has found
@@ -586,7 +586,7 @@ runtime-tool sourcing, and bundled KGP package behavior.
 
 ## LOC Scorecard
 
-Yazelix owns **29,748 lines** of tracked text project files. The
+Yazelix owns **29,750 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
 The README displays the project motto beneath its logo.
@@ -624,7 +624,7 @@ Radar owns the 30-minute transition from a smooth spinner to static yellow `⠿`
 one session controller now supplies the complete bar to lightweight per-tab
 views, and Nova pins the child artifact.
 The activity cleanup lives in the child repositories; their deletions are
-outside this score. Nova's additions document the 1.2 candidate and its checks.
+outside this score. Nova's additions document the 1.3 candidate and its checks.
 Tabs-first bar fitting also lives in Nova Bar and zjstatus. Nova documents the
 right-to-left widget removal order, checks segment configuration and pins the children.
 Hidden widget updates remain owned by zjstatus; Nova pins the corrected child.

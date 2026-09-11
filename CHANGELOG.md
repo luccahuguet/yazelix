@@ -4,6 +4,8 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+## 1.3.0 (candidate)
+
 - Radar keeps one stateful background controller per session. Per-tab sidebar
   panes exchange only bounded size, frame and mouse messages with it, so new
   tabs render Radar in hundreds of milliseconds without multiplying its event
@@ -153,7 +155,7 @@ User-visible runtime changes for Yazelix Nova live here.
   `Right`/`l`/`n` navigation in native animations. Nova's welcome choices match
   the packaged styles; retired style overrides report a configuration error.
 
-## 1.2.0 (candidate)
+## 1.2.0
 
 - Top-bar tabs use native names, selection, bells, and layout indicators without
   execution dots or completion checkmarks. Radar owns activity presentation;
