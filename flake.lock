@@ -323,11 +323,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1789081285,
-        "narHash": "sha256-4fFmvj2gq5M9W8aHWiEj5ThwWCzYFgkxRAt1zVN1ez4=",
+        "lastModified": 1789095918,
+        "narHash": "sha256-M148ahhgneZX2LbNwyh9WRMhVzuI1R2TTVXfKVTuECo=",
         "owner": "Yazelix",
         "repo": "nova-bar",
-        "rev": "acf8d61db71479fc6109915ad0e3909c6a34744e",
+        "rev": "92fa77c019504a3fff16837ab9b560b0e3b4293c",
         "type": "github"
       },
       "original": {
@@ -799,11 +799,11 @@
         "rust-overlay": "rust-overlay_4"
       },
       "locked": {
-        "lastModified": 1789090827,
-        "narHash": "sha256-ddeR3GbWhYLZ/fsHeLSw00/75JEoUHwRBjwe5g152jo=",
+        "lastModified": 1789095460,
+        "narHash": "sha256-CA1sajNRanjVogg1ZAfpXSEL4cgeaMqOaUktOx/osBY=",
         "owner": "Yazelix",
         "repo": "zjstatus",
-        "rev": "bee970ebfd1d676ef6590e5f171eed6193bfb7ea",
+        "rev": "c1adce152e6bc2ca21af7535eadbfad2839a2717",
         "type": "github"
       },
       "original": {

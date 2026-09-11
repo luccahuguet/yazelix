@@ -149,6 +149,9 @@ User-visible runtime changes for Yazelix Nova live here.
   hiding it or selecting a custom sidebar does not restore the old markers.
   The duplicate activity tracker, broadcast pipe, snapshot renderer, and
   zjstatus overlay are removed, eliminating their stale hidden-tab state.
+- New tabs show compact placeholders for command-backed top-bar widgets, then
+  replace each placeholder independently as its result arrives. Tabs render
+  without waiting for those commands and retain priority when space is limited.
 
 - Managed Helix waits for its first editor view before opening Yazelix Forest's
   Snacks renderer, avoiding pre-view crashes on fresh starts and Yazi

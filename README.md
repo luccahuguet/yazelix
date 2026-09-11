@@ -260,7 +260,8 @@ prompt, and doctor diagnosis. See [Configuration](docs/configuration.md#sidebar)
 Radar owns activity presentation. Top-bar tabs retain native names, bells, and
 layout indicators, with no execution markers or fallback when Radar is hidden.
 They render from the first ordered state snapshot in a new tab. Command-backed
-status widgets fill in as their results arrive.
+status widgets show compact loading placeholders immediately, then replace each
+placeholder as its result arrives.
 Codex activity reporting requires enabled, trusted Radar hooks. These hooks send
 activity events to Radar. Without them, Radar still shows ordinary pane and
 command information, but receives no Codex activity status or prompt labels.
@@ -579,11 +580,11 @@ runtime-tool sourcing, and bundled KGP package behavior.
 
 ## LOC Scorecard
 
-Yazelix owns **29,568 lines** of tracked text project files. The
+Yazelix owns **29,573 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
 The README displays the project motto beneath its logo.
-This is 2,063 lines above the pre-Rio fork surface. The current surface
+This is 2,068 lines above the pre-Rio fork surface. The current surface
 also records terminal-free packages, the exact Zellij v0.45.0 fork boundary
 and bounded session probes, Yazi 26.9.1 with paired schemas, corrected Kitty
 crops, Sixel preview cleanup and Rio GPU lifetimes, its one-use picker, Forest and the configurable Radar-default sidebar,
@@ -619,7 +620,8 @@ outside this score. Nova's additions document the 1.2 candidate and its checks.
 Tabs-first bar fitting also lives in Nova Bar and zjstatus. Nova documents the
 right-to-left widget removal order, checks segment configuration and pins the children.
 Hidden widget updates remain owned by zjstatus; Nova pins the corrected child.
-New-tab ordering and redraw suppression also stay in zjstatus; Nova only pins it.
+New-tab ordering, command placeholders and redraw suppression also stay in
+zjstatus; Nova only pins it.
 The Anima update adds 30 lines to expose its current styles, document navigation,
 and check that every advertised style is accepted by Nova's welcome config.
 The tab-mode chord change adds 15 lines to document and check `Ctrl t` passthrough.
