@@ -71,5 +71,5 @@ sidebar_focus = "Ctrl y"
 # keep_alive = true
 
 [bar]
-# Top bar widgets, left to right. Rightmost widgets disappear first when tabs need space.
+# Top bar widgets, left to right. Leftmost widgets disappear first when tabs need space.
 widgets = ["editor", "shell", "term", "codex_usage", "cpu", "ram"]

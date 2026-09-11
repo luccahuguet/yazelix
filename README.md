@@ -268,6 +268,9 @@ and forward mouse input without rebuilding the widget tray. They render from the
 first ordered state snapshot in a new tab. Command-backed status widgets show
 compact loading placeholders immediately, then replace each placeholder as its
 result arrives.
+When tabs need room, widgets disappear from left to right while the surviving
+suffix stays anchored. The version badge remains in the corner until the other
+widgets are gone, then yields before native tab labels are shortened.
 Codex activity reporting requires enabled, trusted Radar hooks. These hooks send
 activity events to Radar. Without them, Radar still shows ordinary pane and
 command information, but receives no Codex activity status or prompt labels.
@@ -586,11 +589,11 @@ runtime-tool sourcing, and bundled KGP package behavior.
 
 ## LOC Scorecard
 
-Yazelix owns **29,753 lines** of tracked text project files. The
+Yazelix owns **29,759 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
 The README displays the project motto beneath its logo.
-This is 2,246 lines above the pre-Rio fork surface. The current surface
+This is 2,252 lines above the pre-Rio fork surface. The current surface
 also records terminal-free packages, the exact Zellij v0.45.0 fork boundary
 and bounded session probes, Yazi 26.9.1 with paired schemas, corrected Kitty
 crops, Sixel preview cleanup and Rio GPU lifetimes, its one-use picker, Forest and the configurable Radar-default sidebar,
@@ -626,7 +629,7 @@ views, and Nova pins the child artifact.
 The activity cleanup lives in the child repositories; their deletions are
 outside this score. Nova's additions document the 1.3 candidate and its checks.
 Tabs-first bar fitting and uncapped eligibility live in Nova Bar and zjstatus.
-Nova documents widget removal, checks segments and pins both children.
+Nova documents left-to-right widget removal, checks segments and pins both children.
 Hidden widget updates remain owned by zjstatus; Nova pins the corrected child.
 New-tab ordering, controller/view delivery, command placeholders and refresh
 throttling stay in zjstatus and Nova Bar; Nova composes and pins them.
