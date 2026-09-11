@@ -586,11 +586,11 @@ runtime-tool sourcing, and bundled KGP package behavior.
 
 ## LOC Scorecard
 
-Yazelix owns **29,713 lines** of tracked text project files. The
+Yazelix owns **29,748 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
 The README displays the project motto beneath its logo.
-This is 2,208 lines above the pre-Rio fork surface. The current surface
+This is 2,243 lines above the pre-Rio fork surface. The current surface
 also records terminal-free packages, the exact Zellij v0.45.0 fork boundary
 and bounded session probes, Yazi 26.9.1 with paired schemas, corrected Kitty
 crops, Sixel preview cleanup and Rio GPU lifetimes, its one-use picker, Forest and the configurable Radar-default sidebar,
@@ -603,7 +603,8 @@ package-pinned managed commands, `~/` reveal targets, native Nushell clipboard
 commands, portable Yazi PTY checks, the Anima mnemonic, and GitHub's native
 sponsor surface, release-note footer and installed-runtime checks while deleting
 persistent tiled-Yazi machinery.
-Release policy requires whole-revision promotions, published gate results and explicit cache uploads.
+Release policy requires whole-revision promotions, published gate results,
+explicit cache uploads, and Bead handoffs for hosted checks expected to exceed 30 minutes.
 Dependency guidance defines monthly review, update ownership and verification.
 Shared flake inputs consolidate equivalent toolchain and utility graphs.
 One packaged `yzx-zellij` symlink serves the public package and managed PATH;
