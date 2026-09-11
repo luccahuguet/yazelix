@@ -799,11 +799,11 @@
         "rust-overlay": "rust-overlay_4"
       },
       "locked": {
-        "lastModified": 1789083764,
-        "narHash": "sha256-COCZ7b6R9b3xQ9++aJdoHlYLdAoNSv77snRa+c4bTjg=",
+        "lastModified": 1789090135,
+        "narHash": "sha256-UCA0V5sPLtgZhA8xd7KM16/2TDRtVoeuc/Ob9x/Xe7U=",
         "owner": "Yazelix",
         "repo": "zjstatus",
-        "rev": "a22d868c771d0c7d004ce9e2506b5157529d0a3f",
+        "rev": "0d984a9b56ee36cf458efd4097a874e22c739a6a",
         "type": "github"
       },
       "original": {

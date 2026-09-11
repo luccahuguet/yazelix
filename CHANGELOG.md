@@ -4,6 +4,10 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- New tabs render their native tab strip from the first ordered state snapshot.
+  Repeated snapshots no longer redraw the whole bar, and command-backed widgets
+  appear as their results arrive instead of waiting for the next timer tick.
+
 - The top bar preserves tabs by removing complete widgets from the right as
   space runs out, starting with the version badge. Widgets and separators return
   as space permits. When tabs alone overflow, the active tab remains visible and
