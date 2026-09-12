@@ -243,6 +243,8 @@ bindings are:
 Every new tab starts with the configured sidebar and a focused, one-use tiled
 Yazi picker. `Alt Shift T` and `Ctrl Alt t`, then `n`, create tabs at your home
 directory; `x` in tab mode also closes a tab. The direct shortcuts pass through in locked mode.
+A session exits when its final terminal pane closes, so UI plugins cannot leave
+an empty tab without a focus anchor.
 A successful choice retargets the tab, creates the managed editor,
 then removes that exact picker. Choosing a folder leaves Forest visible while
 focusing the native Helix picker. `Alt Shift Y` opens the separate persistent
@@ -590,7 +592,7 @@ runtime-tool sourcing, and bundled KGP package behavior.
 
 ## LOC Scorecard
 
-Yazelix owns **29,779 lines** of tracked text project files. The
+Yazelix owns **29,786 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
 The README displays the project motto beneath its logo.

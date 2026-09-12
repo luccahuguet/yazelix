@@ -60,6 +60,7 @@ plugins {
 
     yazelix_pane_orchestrator location="@yzxPaneOrchestrator@" {
         screen_saver_enabled false
+        quit_on_last_terminal_close true
         popup_plugin_url "yzpp"
         managed_agent_command_marker "/bin/yzx-agent"
     }

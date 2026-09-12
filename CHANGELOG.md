@@ -4,6 +4,9 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Closing the final terminal pane quits Nova instead of leaving an unusable
+  session containing only Radar and other UI plugins.
+
 - `Alt j` and `Alt k` cycle through work panes in both directions. Reaching an
   end wraps within the stack instead of moving focus into Radar and trapping it.
 

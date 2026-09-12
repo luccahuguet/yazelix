@@ -2404,6 +2404,7 @@ fn expect_first_party_plugins(git_bin: &Path, config: &str) {
         "load_plugins",
         "support_kitty_keyboard_protocol true",
         "screen_saver_enabled false",
+        "quit_on_last_terminal_close true",
         "popup_plugin_url \"yzpp\"",
         "managed_agent_command_marker \"/bin/yzx-agent\"",
     }
