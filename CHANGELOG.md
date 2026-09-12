@@ -4,6 +4,9 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Yazi `Alt z` rechecks zoxide history on every invocation, so directories
+  recorded after Yazi starts become available without restarting it.
+
 - Cancelling a startup Yazi picker closes its exact tab. A surviving editor tab
   remains usable, and cancelling the sole picker exits Nova instead of leaving
   a plugin-only tab.

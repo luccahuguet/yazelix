@@ -1,27 +1,15 @@
 local M = {}
 
-local state = ya.sync(function(st)
-	return {
-		cwd = tostring(cx.active.current.cwd),
-		empty = st.empty,
-	}
-end)
-
-local set_state = ya.sync(function(st, empty) st.empty = empty end)
+local current_dir = ya.sync(function() return tostring(cx.active.current.cwd) end)
 
 function M:entry()
-	local st = state()
-	if st.empty == nil then
-		st.empty = M.is_empty(st.cwd)
-		set_state(st.empty)
-	end
-
-	if st.empty then
+	local cwd = current_dir()
+	if M.is_empty(cwd) then
 		return ya.notify({ title = "Zoxide", content = "No directory history found.", timeout = 5, level = "error" })
 	end
 
 	local permit = ui.hide()
-	local target, err = M.run_with(st.cwd)
+	local target, err = M.run_with(cwd)
 	permit:drop()
 
 	if not target then

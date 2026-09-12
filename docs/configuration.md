@@ -520,7 +520,8 @@ Choose another key to retain `move-to-window-line-top-bottom`.
 
 `Alt z` opens a zoxide picker in Yazi, moves to the selected directory, and
 explicitly retargets the tab workspace and managed editor through `yzx-open`.
-Ordinary Yazi opens keep the existing tab workspace.
+Each invocation reads the current zoxide history, including directories added
+since Yazi started. Ordinary Yazi opens keep the existing tab workspace.
 
 `yzx-open` writes bounded logs under:
 
