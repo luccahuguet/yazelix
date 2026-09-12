@@ -230,6 +230,7 @@ bindings are:
 | Workspace | `Alt Shift T` | Open a new workspace tab |
 | Workspace | `Alt Shift W` | Close the active workspace tab |
 | Workspace | `Alt m` | Open a new pane |
+| Workspace | `Alt j` / `Alt k` | Focus the next / previous work pane, wrapping within the stack |
 | Workspace | `Alt Shift F` | Toggle the focused pane fullscreen |
 | Workspace | `Alt Shift A` | Show a random visual popup |
 | Editor | `Ctrl y` | Toggle focus between Forest and the editor |
@@ -589,7 +590,7 @@ runtime-tool sourcing, and bundled KGP package behavior.
 
 ## LOC Scorecard
 
-Yazelix owns **29,759 lines** of tracked text project files. The
+Yazelix owns **29,779 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
 The README displays the project motto beneath its logo.
@@ -638,6 +639,8 @@ and check that every advertised style is accepted by Nova's welcome config.
 The tab-mode chord change adds 15 lines to document and check `Ctrl t` passthrough.
 Direct tab shortcuts reuse native Zellij actions; the added lines document them
 and check managed layouts and shortcut collision rejection.
+Circular vertical focus reuses the pane orchestrator's cached geometry; Nova
+adds only the key routes, reference rows and integration assertions.
 The Rio hyperlink repair adds usage and release notes; the child fork removes
 duplicate link matching and click state from its maintained surface.
 The cursor-trail fix adds runtime documentation and release notes; its renderer

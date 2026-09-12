@@ -4,6 +4,9 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- `Alt j` and `Alt k` cycle through work panes in both directions. Reaching an
+  end wraps within the stack instead of moving focus into Radar and trapping it.
+
 - The top bar no longer hides tabs after a fixed six-tab limit. It uses all
   available width before collapsing tabs around the active tab.
 

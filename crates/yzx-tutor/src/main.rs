@@ -13,6 +13,8 @@ const KEY_AGENT: &str = "Alt Shift L";
 const KEY_GIT: &str = "Alt Shift J";
 const KEY_MENU: &str = "Alt Shift M";
 const KEY_FOCUS_LEFT: &str = "Alt h";
+const KEY_FOCUS_DOWN: &str = "Alt j";
+const KEY_FOCUS_UP: &str = "Alt k";
 const KEY_FOCUS_RIGHT: &str = "Alt l";
 const KEY_FULLSCREEN: &str = "Alt Shift F";
 const KEY_FOREST_FOCUS: &str = "Ctrl y";
@@ -318,7 +320,7 @@ fn render_panes_lesson(index: usize, lesson: &TutorLesson) -> String {
 
 ## Actions
 
-1. **Inside Yazelix:** Press `{focus_left}` or `{focus_right}` to walk visible panes.
+1. **Inside Yazelix:** Press `{focus_left}`, `{focus_down}`, `{focus_up}`, or `{focus_right}` to walk visible panes.
 2. **Inside Yazelix:** Press `{new_pane}` for a new stacked pane.
 3. **Inside Yazelix:** Press `{fullscreen}` to fullscreen the focused pane.
 4. **Inside Yazelix:** Press `{tab_left}` or `{tab_right}` to move the current tab, and `{pane_down}` or `{pane_up}` to move the current pane.
@@ -331,6 +333,8 @@ Next lesson: `yzx tutor modes`.
 "#,
         header = lesson_intro(index, lesson),
         focus_left = key(KEY_FOCUS_LEFT),
+        focus_down = key(KEY_FOCUS_DOWN),
+        focus_up = key(KEY_FOCUS_UP),
         focus_right = key(KEY_FOCUS_RIGHT),
         new_pane = key(KEY_NEW_PANE),
         fullscreen = key(KEY_FULLSCREEN),
@@ -572,6 +576,8 @@ mod tests {
         let panes = render_lesson(lesson_index("panes").unwrap());
         for expected in [
             KEY_FOCUS_LEFT,
+            KEY_FOCUS_DOWN,
+            KEY_FOCUS_UP,
             KEY_FOCUS_RIGHT,
             KEY_FULLSCREEN,
             KEY_NEW_PANE,

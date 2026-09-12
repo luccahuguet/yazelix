@@ -80,6 +80,8 @@ fn config_has_chord(config: &str, chord: &str) -> bool {
 
     match chord {
         "Alt h / Alt Left" => config.contains(r#"bind "Alt h" "Alt Left""#),
+        "Alt j / Alt Down" => config.contains(r#"bind "Alt j" "Alt Down""#),
+        "Alt k / Alt Up" => config.contains(r#"bind "Alt k" "Alt Up""#),
         "Alt l / Alt Right" => config.contains(r#"bind "Alt l" "Alt Right""#),
         "Alt 1-9" => {
             (1..=9).all(|tab| config.contains(&format!(r#"bind "Alt {tab}" {{ GoToTab {tab}; }}"#)))

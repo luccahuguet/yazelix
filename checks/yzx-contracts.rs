@@ -2322,6 +2322,8 @@ fn expect_keybinds(config: &str) {
         r#"bind "Alt m" { NewPane; }"#,
         r#"bind "Alt Shift W" { CloseTab; SwitchToMode "Normal"; }"#,
         r#"bind "Alt h" "Alt Left" { MessagePlugin "yazelix_pane_orchestrator" { name "move_focus_left_or_tab"; }; }"#,
+        r#"bind "Alt j" "Alt Down" { MessagePlugin "yazelix_pane_orchestrator" { name "move_focus_down"; }; }"#,
+        r#"bind "Alt k" "Alt Up" { MessagePlugin "yazelix_pane_orchestrator" { name "move_focus_up"; }; }"#,
         r#"bind "Alt l" "Alt Right" { MessagePlugin "yazelix_pane_orchestrator" { name "move_focus_right_or_tab"; }; }"#,
         r#"bind "Ctrl Alt n" { MessagePlugin "radar_controller" { name "zj_radar.cmd.v1"; payload "attention-next"; }; }"#,
         r#"bind "Ctrl Alt p" { MessagePlugin "radar_controller" { name "zj_radar.cmd.v1"; payload "attention-prev"; }; }"#,
