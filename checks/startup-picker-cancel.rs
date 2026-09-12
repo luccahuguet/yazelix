@@ -210,6 +210,9 @@ fn record(recorder: &mut Recorder) -> Result<()> {
         r#"any(.[]; .title == "yazi_picker" and .is_focused)"#,
     )?;
     wait_for_screen(recorder, zellij, sessions[0], "Tab Browse with Yazi")?;
+    send_key(zellij, sessions[0], "Enter")?;
+    recorder.sleep(Duration::from_millis(250))?;
+    wait_for_screen(recorder, zellij, sessions[0], "Tab Browse with Yazi")?;
     send_key(zellij, sessions[0], "Tab")?;
     wait_for_screen(recorder, zellij, sessions[0], "target.txt")?;
     wait_for_screen(recorder, zellij, sessions[0], "Tab Quick search")?;

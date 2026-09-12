@@ -192,11 +192,16 @@ fn quick_picker() -> io::Result<QuickAction> {
             trim_output(&[history.stdout, history.stderr].concat())
         )));
     }
+    let enter_binding = if history.stdout.is_empty() {
+        "--bind=enter:ignore,ctrl-z:ignore,btab:up"
+    } else {
+        "--bind=enter:accept-non-empty,ctrl-z:ignore,btab:up"
+    };
     let mut child = Command::new(FZF)
         .args([
             "--exact",
             "--no-sort",
-            "--bind=ctrl-z:ignore,btab:up",
+            enter_binding,
             "--cycle",
             "--keep-right",
             "--info=inline",

@@ -313,7 +313,7 @@ git ls-files | grep -Ev '^\.beads/|\.lock$|^assets/' | xargs wc -l
 | KDL | 271 |
 | Nu | 14 |
 | Lua | 175 |
-| Rust | 21189 |
+| Rust | 21197 |
 | Text | 85 |
 | Python | 290 |
-| Total | 30506 |
+| Total | 30514 |
