@@ -66,6 +66,10 @@ Linux CI and Darwin Package Smoke build `helix_grammar_sources`, Nova Helix's
 `HELIX-GRAMMAR-SOURCES-001` check. It rejects Codeberg network fetches during Nix
 evaluation and compiles the pinned Codeberg grammars from bundled, hash-verified
 sources. Grammar revisions and snapshot maintenance belong to Nova Helix.
+The Linux-only `startup_picker_cancellation` check reuses Anima's pinned Kinestra
+input to exercise successful handoff, exact later-tab cancellation, and sole-tab
+session exit on a private X display. Shared acceptance still requires Darwin
+Package Smoke on the exact revision; macOS interaction remains unverified.
 
 ## Edge, main, and stable
 
@@ -299,16 +303,16 @@ git ls-files | grep -Ev '^\.beads/|\.lock$|^assets/' | xargs wc -l
 | --- | ---: |
 | Ignore (`.gitignore`) | 19 |
 | License | 201 |
-| Markdown | 4848 |
+| Markdown | 4885 |
 | JSON | 117 |
-| Nix | 1925 |
+| Nix | 1943 |
 | Shell | 126 |
 | YAML | 615 |
 | TOML | 523 |
-| KDL | 268 |
+| KDL | 271 |
 | Nu | 14 |
 | Lua | 133 |
-| Rust | 20586 |
+| Rust | 20886 |
 | Text | 85 |
 | Python | 290 |
-| Total | 29750 |
+| Total | 30108 |

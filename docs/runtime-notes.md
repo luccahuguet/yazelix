@@ -287,6 +287,9 @@ choice owns the tab's initial retarget, creates the managed editor, and only
 then closes that exact picker by id. There is no hidden starter shell or
 prestarted editor whose cwd can become stale.
 
+Exiting before a successful handoff closes the picker's stable tab. A surviving
+editor tab remains focused; cancelling the only picker ends the session.
+
 `Alt Shift Y` asks the pane orchestrator to toggle the packaged `yazi` popup
 with the active tab's canonical workspace root as its explicit request cwd.
 The popup uses `toggle_close_behavior "hide"` and

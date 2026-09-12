@@ -74,11 +74,11 @@ One owner per concern. Paths are the durable map.
 | `runtime/yzx/` | CLI, public Yazi materializer grammar/delegation, startup env, host-Yazi pair resolution, launch/enter handoff |
 | `runtime/yzx-menu.rs` | Menu palette |
 | `runtime/yzx-agent.rs` | Initial agent title, custom-command exec, provider bootstrap (`codex resume` → `grok` → `opencode` → `pi` → `claude --resume`), and one-time optional Codex Radar setup |
-| `runtime/yzx-yazi.rs` | Managed Yazi process/env launch, active session appearance lookup, editor resolve, startup-picker and workspace-popup roles |
+| `runtime/yzx-yazi.rs` | Managed Yazi process/env launch, active session appearance lookup, editor resolve, startup-picker cancellation, and workspace-popup roles |
 | `runtime/yzx-nu.rs` | Managed Nu layering; runtime-effective Starship config request |
 | `runtime/yzx-zellij-config.rs` | Packaged + guarded Zellij scalar sidecar merge |
 | `runtime/yzx/zellij.rs` | Plugin sidecar inject; launch materialize/patches |
-| `crates/yzx-open/` | Editor open, Helix bridge, successful startup-picker removal, target-at-launch popup reveal, bounded diagnostics |
+| `crates/yzx-open/` | Editor open, Helix bridge, successful startup-picker orchestrator handoff, target-at-launch popup reveal, bounded diagnostics |
 | `crates/yzx-yazi-config/` | Managed Yazi config-home materialization, native TOML layering, and runtime-only flavor projection |
 | `crates/yzx-tutor/` | Tutor CLI and lessons |
 | `runtime/yzx-helix.sh` (`yzx-hx`) | Effective Helix config + Steel wiring |
@@ -395,6 +395,7 @@ Helix TOML overrides reserved `Alt r`; `status --json` retains schema version 1.
 | `ZELLIJ_SESSION_NAME` | Compared when a bridge registry recorded it |
 | `YAZELIX_ZELLIJ_SESSION_NAME` | Yazi saves real session here before blanking `ZELLIJ_SESSION_NAME` for image previews; open/reveal restore it for Zellij control |
 | `ZELLIJ_PANE_ID` → live tab membership | `yzx-open` reuses only a Helix registry whose pane is in the same `tab_id` |
+| Startup picker pane id → stable tab id | The pane orchestrator closes that exact picker pane after same-tab editor readiness, or its exact tab on cancellation |
 | Helper-derived ids outside `yzx` | `yzx-hx` / `yzx-yazi` / `yzx-open` standalone must not hit a live window bridge |
 
 Host editors (`nvim`, `/usr/bin/hx`, …) skip the Helix bridge entirely.
@@ -424,7 +425,7 @@ Detail lives in Owners, checks, and the notes below.
 | C3 | One Radar controller with per-tab views across layout swaps | `defaults/zellij/config.kdl`, `defaults/zellij/layout*.kdl`, zj-radar | `zellij-layout`, `yzx-contracts`, isolated startup benchmark | Fresh-session state-retention dogfood |
 | C4 | Packaged keys + guarded Zellij sidecar | `defaults/zellij/config.kdl`, `yzx-zellij-config` | `yzx-contracts` | Full keys |
 | C5 | Managed Nu layering | `yzx-nu`, `defaults/nu/` | `yzx-contracts` | — |
-| C6 | Managed Yazi layering, public noninteractive materialization, `yzx-open`, and zoxide | `defaults/yazi/`, `runtime/yzx-yazi.rs`, `runtime/yzx/`, `crates/yzx-yazi-config/`, `crates/yzx-open/` | host-Yazi contracts + materialization + open tests | Yazi UI |
+| C6 | Managed Yazi layering, public noninteractive materialization, exact startup-picker lifecycle, `yzx-open`, and zoxide | `defaults/yazi/`, `runtime/yzx-yazi.rs`, `runtime/yzx/`, `crates/yzx-yazi-config/`, `crates/yzx-open/`, pane orchestrator | host-Yazi contracts + materialization + open tests + isolated cancellation check | Yazi UI |
 | C7 | Helix bridge window/tab isolation (`session` + `tab_id`) | `yzx-open`, flake | `yzx-open` tests | Multi-window |
 | C10 | Top bar tray, home-marker tabs, home-scoped new tabs, usage `tu` + cache | layout, config, runtime, tokenusage | layout + contracts | Visual bar |
 | C12 | Welcome defaults and random pool | Anima, runtime, root config | screen tests + contracts | Animation |

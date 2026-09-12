@@ -389,6 +389,10 @@
         "gitYazi": "gitYazi",
         "glyphHx": "glyphHx",
         "home-manager": "home-manager",
+        "kinestra": [
+          "yazelixScreen",
+          "kinestra"
+        ],
         "nixpkgs": "nixpkgs",
         "notifyHx": "notifyHx",
         "novaBar": "novaBar",
@@ -681,11 +685,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1789176783,
-        "narHash": "sha256-qkTH2KiCxePe1FxmDDeTI+TmpGdEt5LjRv6VSSAJGLI=",
+        "lastModified": 1789214182,
+        "narHash": "sha256-gdDwv7YHeQVrnv05fWvFT63tjYzudiFdGexNsRqmeMI=",
         "owner": "Yazelix",
         "repo": "zellij-pane-orchestrator",
-        "rev": "9b9a207205d81f6c320a7b519fe407c973c60488",
+        "rev": "0c1076bf8050e71696683831897b9503e3844322",
         "type": "github"
       },
       "original": {

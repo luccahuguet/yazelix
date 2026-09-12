@@ -17,6 +17,7 @@ const YZX_HELIX: &str = "@yzxHelix@";
 const YZX_EDITOR_LAUNCHER: &str = "@yzxEditor@";
 const YZX_CONFIG: &str = "@yzxConfig@";
 const PATH_PREFIX: &str = "@pathPrefix@";
+const PANE_ORCHESTRATOR: &str = "yazelix_pane_orchestrator";
 
 fn main() -> ExitCode {
     match run() {
@@ -42,6 +43,7 @@ fn run() -> io::Result<()> {
     let editor = effective_editor_command(yzx_config_value("editor.command")?);
     let mut args = env::args_os().skip(1).collect::<Vec<_>>();
     let role = take_role_flag(&mut args);
+    let is_startup_picker = role == Some("startup-picker");
     let mut command = Command::new(yazi);
     command
         .args(args)
@@ -70,7 +72,6 @@ fn run() -> io::Result<()> {
             command.env_remove("YZX_YAZI_ROLE");
         }
     }
-
     if uses_helix_bridge(&editor) {
         command.env("YAZELIX_HELIX_BRIDGE_SESSION_ID", bridge_session_id());
     }
@@ -82,7 +83,48 @@ fn run() -> io::Result<()> {
             .env("KITTY_WINDOW_ID", "1");
     }
 
+    if is_startup_picker {
+        let status = command.status()?;
+        close_cancelled_startup_picker_tab()?;
+        return if status.success() {
+            Ok(())
+        } else {
+            Err(io::Error::other(format!("Yazi exited with {status}")))
+        };
+    }
+
     Err(command.exec())
+}
+
+fn close_cancelled_startup_picker_tab() -> io::Result<()> {
+    let Some(pane_id) = nonempty_env("ZELLIJ_PANE_ID") else {
+        return Ok(());
+    };
+    let mut command = Command::new(YZX_ZELLIJ);
+    if let Some(session) =
+        nonempty_env("ZELLIJ_SESSION_NAME").or_else(|| nonempty_env("YAZELIX_ZELLIJ_SESSION_NAME"))
+    {
+        command.env("ZELLIJ_SESSION_NAME", session);
+    }
+    let output = command
+        .args([
+            "action",
+            "pipe",
+            "--plugin",
+            PANE_ORCHESTRATOR,
+            "--name",
+            "close_startup_picker_tab",
+            "--",
+        ])
+        .arg(pane_id)
+        .output()?;
+    let response = trim_output(&output.stdout);
+    if output.status.success() && response == "ok" {
+        return Ok(());
+    }
+    Err(io::Error::other(trim_output(
+        &[output.stdout, output.stderr].concat(),
+    )))
 }
 
 fn take_role_flag(args: &mut Vec<OsString>) -> Option<&'static str> {

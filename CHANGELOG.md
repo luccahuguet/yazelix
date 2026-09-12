@@ -4,6 +4,10 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- Cancelling a startup Yazi picker closes its exact tab. A surviving editor tab
+  remains usable, and cancelling the sole picker exits Nova instead of leaving
+  a plugin-only tab.
+
 - Closing the final terminal pane quits Nova instead of leaving an unusable
   session containing only Radar and other UI plugins.
 

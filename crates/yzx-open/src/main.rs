@@ -237,7 +237,7 @@ fn run(config: &Config, raw_targets: impl IntoIterator<Item = OsString>) -> Resu
         return Err(error);
     }
     if config.yazi_role.as_deref() == Some("startup-picker") {
-        close_startup_picker(config)?;
+        complete_startup_picker_handoff(config)?;
     }
     Ok(())
 }
@@ -694,17 +694,22 @@ fn focus_pane(config: &Config, pane_id: &str) -> Result<()> {
     ensure_success(&output, "zellij failed to focus editor pane")
 }
 
-fn close_startup_picker(config: &Config) -> Result<()> {
+fn complete_startup_picker_handoff(config: &Config) -> Result<()> {
     let pane_id = config
         .zellij_pane_id
         .as_deref()
-        .context("startup Yazi picker has no Zellij pane id")?;
-    let output = zellij_command(config)
-        .args(["action", "close-pane", "--pane-id"])
-        .arg(zellij_pane_arg(pane_id))
-        .output()
-        .context("could not close startup Yazi picker")?;
-    ensure_success(&output, "zellij failed to close startup Yazi picker")
+        .and_then(parse_zellij_pane_id)
+        .filter(|pane_id| !pane_id.is_plugin)
+        .context("startup Yazi picker has no terminal Zellij pane id")?;
+    let response = orchestrator_pipe(
+        &orchestrator_config(config),
+        "complete_startup_picker_handoff",
+        &pane_id.id.to_string(),
+    )?;
+    if response != "ok" {
+        bail!("pane orchestrator rejected startup picker handoff: {response}");
+    }
+    Ok(())
 }
 
 fn target_workspace_root(config: &Config, targets: &[PathBuf]) -> PathBuf {
@@ -1078,6 +1083,7 @@ mod tests {
 	  case "$*" in
 	    *"--name get_active_tab_session_state"*) printf '%s\n' '{session_state}'; exit 0 ;;
 	    *"--name retarget_workspace"*) printf '%s\n' '{{"status":"ok"}}'; exit 0 ;;
+	    *"--name complete_startup_picker_handoff"*) printf '%s\n' 'ok'; exit 0 ;;
 	  esac
 	fi
 	if [ "$1" = action ] && [ "$2" = focus-pane-id ] && {fail_focus}; then
@@ -1473,7 +1479,7 @@ fi
         assert!(log.contains("--name retarget_workspace"), "{log}");
         let editor = log.find("args=run --name editor").unwrap();
         let close = log
-            .find("args=action close-pane --pane-id terminal_9")
+            .find("--name complete_startup_picker_handoff -- 9")
             .unwrap();
         assert!(editor < close, "{log}");
     }

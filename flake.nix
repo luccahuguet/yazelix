@@ -64,6 +64,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.fenix.follows = "novaBar/fenix";
     };
+    kinestra.follows = "yazelixScreen/kinestra";
     autoLayoutYazi = {
       url = "github:Yazelix/auto-layout.yazi/6c4be74524e821e7a06aeb2f4d85a031c468def0";
       flake = false;
@@ -106,6 +107,7 @@
     yazelixZellijPaneOrchestrator,
     zjRadar,
     yazelixScreen,
+    kinestra,
     autoLayoutYazi,
     starshipYazi,
     gitYazi,
@@ -1674,6 +1676,22 @@
         test "$(PATH=${pkgs.coreutils}/bin "$package/bin/yzx" run printf unrelated)" = unrelated
         touch "$out"
       '';
+    } // nixpkgs.lib.optionalAttrs (system == "x86_64-linux") {
+      startup_picker_cancellation = let
+        proof = kinestra.lib.${system}.mkRecorder {
+          name = "nova-startup-picker-cancellation-check";
+          recipe = ./checks/startup-picker-cancel.rs;
+          runtimeInputs = [pkgs.jq pkgs.xterm];
+          environment = {
+            YZX_BIN = "${yzx}/bin/yzx";
+            ZELLIJ_BIN = "${yzx}/bin/yzx-zellij";
+          };
+        };
+      in
+        pkgs.runCommand "nova-startup-picker-cancellation-check" {} ''
+          ${pkgs.coreutils}/bin/timeout --kill-after=10s 75s ${proof}/bin/nova-startup-picker-cancellation-check
+          touch "$out"
+        '';
     });
 
     apps = eachSystem (system:

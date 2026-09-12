@@ -10,5 +10,5 @@ group = "git"
 
 [opener]
 edit = [
-	{ run = '@opener@ %s', block = false, for = "unix" },
+	{ run = '@opener@ %s', block = true, for = "unix" },
 ]

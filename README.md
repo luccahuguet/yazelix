@@ -246,7 +246,9 @@ directory; `x` in tab mode also closes a tab. The direct shortcuts pass through 
 A session exits when its final terminal pane closes, so UI plugins cannot leave
 an empty tab without a focus anchor.
 A successful choice retargets the tab, creates the managed editor,
-then removes that exact picker. Choosing a folder leaves Forest visible while
+then removes that exact picker. Exiting the picker without a successful handoff
+closes its exact tab; a surviving editor tab remains focused, while cancelling
+the only picker ends the session. Choosing a folder leaves Forest visible while
 focusing the native Helix picker. `Alt Shift Y` opens the separate persistent
 Yazi popup later.
 
@@ -592,11 +594,11 @@ runtime-tool sourcing, and bundled KGP package behavior.
 
 ## LOC Scorecard
 
-Yazelix owns **29,786 lines** of tracked text project files. The
+Yazelix owns **30,108 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
 The README displays the project motto beneath its logo.
-This is 2,252 lines above the pre-Rio fork surface. The current surface
+This is 2,574 lines above the pre-Rio fork surface. The current surface
 also records terminal-free packages, the exact Zellij v0.45.0 fork boundary
 and bounded session probes, Yazi 26.9.1 with paired schemas, corrected Kitty
 crops, Sixel preview cleanup and Rio GPU lifetimes, its one-use picker, Forest and the configurable Radar-default sidebar,
@@ -652,6 +654,9 @@ and pins the correction without adding a renderer or changing welcome policy.
 Chladni and Physarum add welcome choices and delivery checks; their engines
 remain in Anima without adding runtime dependencies.
 The Anima pane title and custom-popup collision checks use its product name.
+Startup-picker cancellation adds one isolated lifecycle check for successful
+handoff, exact later-tab removal, and sole-tab exit while reusing Anima's
+existing Kinestra pin.
 Anima 0.2.0 uses its named executable; Plasma adds one welcome choice and a parity
 check, while animation rendering and fading cards remain in the child.
 The card-corner correction stays in Anima; Nova only pins and documents it.
