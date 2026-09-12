@@ -4,6 +4,10 @@ User-visible runtime changes for Yazelix Nova live here.
 
 ## Unreleased
 
+- New tabs open a fast zoxide search first. `Enter` opens its selected directory,
+  while `Tab` toggles into full Yazi and back without losing Yazi's current
+  directory; both views show their active keys in a local footer.
+
 - Yazi `Alt z` rechecks zoxide history on every invocation, so directories
   recorded after Yazi starts become available without restarting it.
 

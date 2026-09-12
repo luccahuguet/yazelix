@@ -1,0 +1,24 @@
+[[mgr.prepend_keymap]]
+on = ["<Tab>"]
+run = "quit --code=10"
+desc = "Return to quick search"
+
+[[mgr.prepend_keymap]]
+on = ["q"]
+run = "quit --no-cwd-file --code=130"
+desc = "Cancel startup picker"
+
+[[mgr.prepend_keymap]]
+on = ["Q"]
+run = "quit --no-cwd-file --code=130"
+desc = "Cancel startup picker"
+
+[[mgr.prepend_keymap]]
+on = ["<C-c>"]
+run = "quit --no-cwd-file --code=130"
+desc = "Cancel startup picker"
+
+[[mgr.prepend_keymap]]
+on = ["<Esc>"]
+run = "quit --no-cwd-file --code=130"
+desc = "Cancel startup picker"

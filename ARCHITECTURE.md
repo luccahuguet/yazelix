@@ -74,7 +74,7 @@ One owner per concern. Paths are the durable map.
 | `runtime/yzx/` | CLI, public Yazi materializer grammar/delegation, startup env, host-Yazi pair resolution, launch/enter handoff |
 | `runtime/yzx-menu.rs` | Menu palette |
 | `runtime/yzx-agent.rs` | Initial agent title, custom-command exec, provider bootstrap (`codex resume` → `grok` → `opencode` → `pi` → `claude --resume`), and one-time optional Codex Radar setup |
-| `runtime/yzx-yazi.rs` | Managed Yazi process/env launch, active session appearance lookup, editor resolve, startup-picker cancellation, and workspace-popup roles |
+| `runtime/yzx-yazi.rs` | Managed Yazi process/env launch, active session appearance lookup, editor resolve, fast startup search/Yazi toggle lifecycle, and workspace-popup roles |
 | `runtime/yzx-nu.rs` | Managed Nu layering; runtime-effective Starship config request |
 | `runtime/yzx-zellij-config.rs` | Packaged + guarded Zellij scalar sidecar merge |
 | `runtime/yzx/zellij.rs` | Plugin sidecar inject; launch materialize/patches |
@@ -425,7 +425,7 @@ Detail lives in Owners, checks, and the notes below.
 | C3 | One Radar controller with per-tab views across layout swaps | `defaults/zellij/config.kdl`, `defaults/zellij/layout*.kdl`, zj-radar | `zellij-layout`, `yzx-contracts`, isolated startup benchmark | Fresh-session state-retention dogfood |
 | C4 | Packaged keys + guarded Zellij sidecar | `defaults/zellij/config.kdl`, `yzx-zellij-config` | `yzx-contracts` | Full keys |
 | C5 | Managed Nu layering | `yzx-nu`, `defaults/nu/` | `yzx-contracts` | — |
-| C6 | Managed Yazi layering, public noninteractive materialization, exact startup-picker lifecycle, `yzx-open`, and zoxide | `defaults/yazi/`, `runtime/yzx-yazi.rs`, `runtime/yzx/`, `crates/yzx-yazi-config/`, `crates/yzx-open/`, pane orchestrator | host-Yazi contracts + materialization + open tests + isolated cancellation check | Yazi UI |
+| C6 | Managed Yazi layering, public noninteractive materialization, fast zoxide-first startup with exact picker lifecycle, `yzx-open`, and zoxide | `defaults/yazi/`, `runtime/yzx-yazi.rs`, `runtime/yzx/`, `crates/yzx-yazi-config/`, `crates/yzx-open/`, pane orchestrator | host-Yazi contracts + materialization + open tests + isolated startup-picker check | Picker/Yazi UI |
 | C7 | Helix bridge window/tab isolation (`session` + `tab_id`) | `yzx-open`, flake | `yzx-open` tests | Multi-window |
 | C10 | Top bar tray, home-marker tabs, home-scoped new tabs, usage `tu` + cache | layout, config, runtime, tokenusage | layout + contracts | Visual bar |
 | C12 | Welcome defaults and random pool | Anima, runtime, root config | screen tests + contracts | Animation |

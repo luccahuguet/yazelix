@@ -67,11 +67,15 @@ fn wait_for_screen(
         let output = Command::new(zellij)
             .args(["-s", session, "action", "dump-screen"])
             .output()?;
-        if output.status.success() && String::from_utf8_lossy(&output.stdout).contains(needle) {
+        let screen = String::from_utf8_lossy(&output.stdout).into_owned();
+        if output.status.success() && screen.contains(needle) {
             return Ok(());
         }
         if Instant::now() >= deadline {
-            return Err(io::Error::other(format!("screen never contained {needle}")).into());
+            return Err(io::Error::other(format!(
+                "screen never contained {needle}; last screen:\n{screen}"
+            ))
+            .into());
         }
         recorder.sleep(Duration::from_millis(100))?;
     }
@@ -114,6 +118,31 @@ fn send_key(zellij: &Path, session: &str, key: &str) -> Result<()> {
     }
 }
 
+fn write_chars(zellij: &Path, session: &str, chars: &str) -> Result<()> {
+    let status = Command::new(zellij)
+        .args(["-s", session, "action", "write-chars", chars])
+        .status()?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(io::Error::other(format!("could not write characters to {session}")).into())
+    }
+}
+
+fn new_tab(zellij: &Path, session: &str, layout: &Path, cwd: &Path) -> Result<()> {
+    let status = Command::new(zellij)
+        .args(["-s", session, "action", "new-tab", "--layout"])
+        .arg(layout)
+        .arg("--cwd")
+        .arg(cwd)
+        .status()?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(io::Error::other(format!("could not create a tab in {session}")).into())
+    }
+}
+
 fn launch(
     recorder: &mut Recorder,
     yzx: &Path,
@@ -128,6 +157,9 @@ fn launch(
             .env("HOME", home)
             .env("YAZELIX_CONFIG_HOME", home.join(".config/yazelix"))
             .env("YAZELIX_STATE_DIR", home.join(".local/share/yazelix"))
+            .env("_ZO_DATA_DIR", home.join(".local/share/zoxide"))
+            .env("FZF_DEFAULT_OPTS", "--not-a-real-fzf-option")
+            .env("FZF_DEFAULT_OPTS_FILE", home.join("hostile-fzf-options"))
             .args(["-class", "nova-picker-cancel", "-e"])
             .arg(yzx)
             .args(["enter", "--session", session]),
@@ -152,13 +184,22 @@ fn record(recorder: &mut Recorder) -> Result<()> {
 
     let home = recorder.work().join("home");
     let picker_dir = recorder.work().join("picker");
+    let nested_dir = picker_dir.join("nested");
+    let quick_dir = recorder.work().join("quick-target");
     fs::create_dir_all(home.join(".config/yazelix"))?;
-    fs::create_dir(&picker_dir)?;
+    fs::create_dir_all(&nested_dir)?;
+    fs::create_dir(&quick_dir)?;
     fs::write(
         home.join(".config/yazelix/config.toml"),
         "[welcome]\nenabled = false\n",
     )?;
+    fs::write(
+        home.join("hostile-fzf-options"),
+        "--not-a-real-fzf-option\n",
+    )?;
     fs::write(picker_dir.join("target.txt"), "picker cancellation proof\n")?;
+    fs::write(nested_dir.join("inside.txt"), "nested picker proof\n")?;
+    fs::write(quick_dir.join("quick.txt"), "quick picker proof\n")?;
 
     recorder.display(Size::new(1200, 720)?, None)?;
     launch(recorder, yzx, sessions[0], &picker_dir, &home)?;
@@ -168,8 +209,25 @@ fn record(recorder: &mut Recorder) -> Result<()> {
         sessions[0],
         r#"any(.[]; .title == "yazi_picker" and .is_focused)"#,
     )?;
+    wait_for_screen(recorder, zellij, sessions[0], "Tab Browse with Yazi")?;
+    send_key(zellij, sessions[0], "Tab")?;
     wait_for_screen(recorder, zellij, sessions[0], "target.txt")?;
-    send_key(zellij, sessions[0], "End")?;
+    wait_for_screen(recorder, zellij, sessions[0], "Tab Quick search")?;
+    let zoxide_status = Command::new("zoxide")
+        .env("_ZO_DATA_DIR", home.join(".local/share/zoxide"))
+        .args(["add", "--score", "100"])
+        .arg(&quick_dir)
+        .status()?;
+    if !zoxide_status.success() {
+        return Err(io::Error::other("could not seed isolated zoxide history").into());
+    }
+    send_key(zellij, sessions[0], "Home")?;
+    send_key(zellij, sessions[0], "Right")?;
+    wait_for_screen(recorder, zellij, sessions[0], "inside.txt")?;
+    send_key(zellij, sessions[0], "Tab")?;
+    wait_for_screen(recorder, zellij, sessions[0], "Tab Browse with Yazi")?;
+    send_key(zellij, sessions[0], "Tab")?;
+    wait_for_screen(recorder, zellij, sessions[0], "inside.txt")?;
     send_key(zellij, sessions[0], "Enter")?;
     wait_for_panes(
         recorder,
@@ -177,34 +235,47 @@ fn record(recorder: &mut Recorder) -> Result<()> {
         sessions[0],
         r#"any(.[]; .title == "editor" and .is_focused)"#,
     )?;
+    wait_for_screen(recorder, zellij, sessions[0], "nested picker proof")?;
 
     let layout = yzx
         .parent()
         .and_then(Path::parent)
         .expect("yzx is installed under bin")
         .join("share/yazelix/layout.kdl");
-    let status = Command::new(zellij)
-        .args(["-s", sessions[0], "action", "new-tab", "--layout"])
-        .arg(layout)
-        .arg("--cwd")
-        .arg(&picker_dir)
-        .status()?;
-    if !status.success() {
-        return Err(io::Error::other("could not create the second tab").into());
-    }
+    new_tab(zellij, sessions[0], &layout, &picker_dir)?;
     wait_for_panes(
         recorder,
         zellij,
         sessions[0],
         r#"([.[].tab_position] | unique | length) == 2 and any(.[]; .title == "yazi_picker" and .is_focused)"#,
     )?;
-    wait_for_screen(recorder, zellij, sessions[0], "target.txt")?;
+    wait_for_screen(recorder, zellij, sessions[0], "Tab Browse with Yazi")?;
+    write_chars(zellij, sessions[0], "quick-target")?;
+    send_key(zellij, sessions[0], "Enter")?;
+    wait_for_panes(
+        recorder,
+        zellij,
+        sessions[0],
+        r#"([.[].tab_position] | unique | length) == 2 and any(.[]; .title == "editor" and .is_focused)"#,
+    )?;
+    wait_for_screen(recorder, zellij, sessions[0], "quick.txt")?;
+
+    new_tab(zellij, sessions[0], &layout, &picker_dir)?;
+    wait_for_panes(
+        recorder,
+        zellij,
+        sessions[0],
+        r#"([.[].tab_position] | unique | length) == 3 and any(.[]; .title == "yazi_picker" and .is_focused)"#,
+    )?;
+    wait_for_screen(recorder, zellij, sessions[0], "Tab Browse with Yazi")?;
+    send_key(zellij, sessions[0], "Tab")?;
+    wait_for_screen(recorder, zellij, sessions[0], "Tab Quick search")?;
     send_key(zellij, sessions[0], "q")?;
     wait_for_panes(
         recorder,
         zellij,
         sessions[0],
-        r#"([.[].tab_position] | unique | length) == 1 and any(.[]; .title == "editor" and .is_focused)"#,
+        r#"([.[].tab_position] | unique | length) == 2 and any(.[]; .title == "editor" and .is_focused)"#,
     )?;
 
     Command::new(zellij)
@@ -219,8 +290,8 @@ fn record(recorder: &mut Recorder) -> Result<()> {
         sessions[1],
         r#"any(.[]; .title == "yazi_picker" and .is_focused)"#,
     )?;
-    wait_for_screen(recorder, zellij, sessions[1], "target.txt")?;
-    send_key(zellij, sessions[1], "q")?;
+    wait_for_screen(recorder, zellij, sessions[1], "Tab Browse with Yazi")?;
+    send_key(zellij, sessions[1], "Esc")?;
     wait_for_session_exit(zellij, sessions[1])?;
     recorder.stop_app()
 }

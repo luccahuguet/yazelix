@@ -240,9 +240,12 @@ bindings are:
 | Editor / Yazi | `Alt r` | Reveal in Yazi or return unchanged |
 | Yazi | `Alt z` | Retarget the tab workspace with zoxide |
 
-Every new tab starts with the configured sidebar and a focused, one-use tiled
-Yazi picker. `Alt Shift T` and `Ctrl Alt t`, then `n`, create tabs at your home
-directory; `x` in tab mode also closes a tab. The direct shortcuts pass through in locked mode.
+Every new tab starts with the configured sidebar and a focused quick zoxide
+search. `Enter` opens the selected directory; `Tab` switches to full Yazi, and
+`Tab` in that startup Yazi returns to quick search at the directory you reached.
+Both views show their controls in a local footer. `Alt Shift T` and `Ctrl Alt t`,
+then `n`, create tabs at your home directory; `x` in tab mode also closes a tab.
+The direct shortcuts pass through in locked mode.
 A session exits when its final terminal pane closes, so UI plugins cannot leave
 an empty tab without a focus anchor.
 A successful choice retargets the tab, creates the managed editor,
@@ -594,7 +597,7 @@ runtime-tool sourcing, and bundled KGP package behavior.
 
 ## LOC Scorecard
 
-Yazelix owns **30,144 lines** of tracked text project files. The
+Yazelix owns **30,506 lines** of tracked text project files. The
 [reproducible scorecard](docs/development.md#loc-scorecard) excludes Beads,
 lockfiles, and binary assets.
 The README displays the project motto beneath its logo.
@@ -641,6 +644,9 @@ throttling stay in zjstatus and Nova Bar; Nova composes and pins them.
 The Anima update adds 30 lines to expose its current styles, document navigation,
 and check that every advertised style is accepted by Nova's welcome config.
 The tab-mode chord change adds 15 lines to document and check `Ctrl t` passthrough.
+Fast startup keeps zoxide search and Yazi browsing in one wrapper; most of its
+added Rust extends the existing isolated lifecycle check across both views,
+location retention, handoff, and cancellation.
 Direct tab shortcuts reuse native Zellij actions; the added lines document them
 and check managed layouts and shortcut collision rejection.
 Circular vertical focus reuses the pane orchestrator's cached geometry; Nova
@@ -654,9 +660,9 @@ and pins the correction without adding a renderer or changing welcome policy.
 Chladni and Physarum add welcome choices and delivery checks; their engines
 remain in Anima without adding runtime dependencies.
 The Anima pane title and custom-popup collision checks use its product name.
-Startup-picker cancellation adds one isolated lifecycle check for successful
-handoff, exact later-tab removal, and sole-tab exit while reusing Anima's
-existing Kinestra pin.
+The startup picker adds one isolated lifecycle check for quick-search handoff,
+the Yazi toggle with retained browsing location, exact later-tab removal, and
+sole-tab exit while reusing Anima's existing Kinestra pin.
 Anima 0.2.0 uses its named executable; Plasma adds one welcome choice and a parity
 check, while animation rendering and fading cards remain in the child.
 The card-corner correction stays in Anima; Nova only pins and documents it.

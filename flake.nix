@@ -569,6 +569,14 @@
         ln -s ${yaziBistroPackage}/share/yazi-flavors/catalog.toml "$out/catalog.toml"
         ln -s ${yaziBistroPackage}/share/yazi-flavors/flavors "$out/flavors"
       '';
+      yzxYaziStartupConfig = pkgs.runCommand "yzx-yazi-startup-config" {} ''
+        mkdir "$out"
+        for entry in ${yzxYaziConfig}/*; do
+          ln -s "$entry" "$out/''${entry##*/}"
+        done
+        rm "$out/keymap.toml"
+        cat ${./defaults/yazi/startup-keymap.toml} ${yzxYaziConfig}/keymap.toml > "$out/keymap.toml"
+      '';
       yzxYaziMaterializer = yzxYaziMaterializerFor pkgs;
       defaultConfig = builtins.fromTOML (builtins.readFile ./defaults/config.toml);
       defaultBarWidgets = defaultConfig.bar.widgets;
@@ -733,6 +741,7 @@
         };
         yazi = rustBin "yzx-yazi" (pkgs.replaceVars ./runtime/yzx-yazi.rs {
           yzxYaziConfig = "${yzxYaziConfig}";
+          yzxYaziStartupConfig = "${yzxYaziStartupConfig}";
           yzxYaziMaterializer = "${yzxYaziMaterializer}/bin/yzx-yazi-config";
           yzxOpen = "${yzxOpenCore}/bin/yzx-open";
           yzxYaziReturn = "${yzxOpenCore}/bin/yzx-yazi-return";
@@ -740,6 +749,8 @@
           yzxHelix = "${managedEditor}/bin/yzx-hx";
           yzxEditor = "${editor}/bin/yzx-editor";
           yzxConfig = "${yzxConfig}/bin/yzx-config";
+          fzf = "${pkgs.fzf}/bin/fzf";
+          zoxide = "${pkgs.zoxide}/bin/zoxide";
           pathPrefix = pkgs.lib.makeBinPath [pkgs.fzf pkgs.git pkgs.starship pkgs.zoxide];
         });
         layout = let
@@ -1289,6 +1300,13 @@
       yzx_yazi_materialization = pkgs.runCommand "yzx-yazi-materialization-check" {nativeBuildInputs = [pkgs.rustc pkgs.stdenv.cc];} ''
         rustc --edition=2024 --test ${./runtime/yzx-yazi.rs} -o yzx-yazi-materialization-check
         ./yzx-yazi-materialization-check
+        grep -Fq 'run = "quit --code=10"' ${./defaults/yazi/startup-keymap.toml}
+        grep -Fq 'run = "quit --no-cwd-file --code=130"' ${./defaults/yazi/startup-keymap.toml}
+        grep -Fq 'Tab Quick search' ${yzx}/share/yazelix/yazi/init.lua
+        if grep -Fq 'quit --code=10' ${yzx}/share/yazelix/yazi/keymap.toml; then
+          printf '%s\n' 'ordinary managed Yazi unexpectedly owns the startup Tab binding' >&2
+          exit 1
+        fi
 
         yazi_env() {
           YZX_YAZI_STARSHIP_CONFIG="$1/yazelix_starship.toml" YAZI_CONFIG_HOME="$1" ${yaziEnvPty} > "$2"
@@ -1639,11 +1657,6 @@
         grep -F "starship=$YAZELIX_STATE_DIR/yazi/yazelix_starship.toml" "$root/yazi-popup"
         grep -F 'role=workspace-popup' "$root/yazi-popup"
         grep -F 'args=popup ' "$root/yazi-popup"
-        PATH=${fakeHostYazi}/bin:${pkgs.coreutils}/bin "$package/bin/yzx" run yazi \
-          --yzx-startup-picker > "$root/yazi-picker"
-        grep -F 'role=startup-picker' "$root/yazi-picker"
-        grep -F 'args=' "$root/yazi-picker"
-
         YZX_YAZI_BIN=${fakeHostYazi}/bin/yazi \
           YZX_YA=${fakeHostYazi}/bin/ya \
           PATH=${fakeMismatchedHostYazi}/bin:${pkgs.coreutils}/bin \
@@ -1682,7 +1695,7 @@
         proof = kinestra.lib.${system}.mkRecorder {
           name = "nova-startup-picker-cancellation-check";
           recipe = ./checks/startup-picker-cancel.rs;
-          runtimeInputs = [pkgs.jq pkgs.xterm];
+          runtimeInputs = [pkgs.jq pkgs.xterm pkgs.zoxide];
           environment = {
             YZX_BIN = "${yzx}/bin/yzx";
             ZELLIJ_BIN = "${yzx}/bin/yzx-zellij";
